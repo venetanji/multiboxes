@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#eeede7" />
+    <title>Multiboxes · Black / White</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./app.mjs"></script>
+  </head>
+  <body>
+    <main>
+      <header class="masthead">
+        <div>
+          <h1>Multiboxes<span class="title-dot" aria-hidden="true">.</span></h1>
+          <p>Two teams. One shared world. Paint on the way down.</p>
+        </div>
+        <span class="edition">BLACK / WHITE</span>
+      </header>
+      <form id="connection" class="connection">
+        <label class="nickname"
+          >Nickname<input
+            id="nickname"
+            maxlength="24"
+            value="Box"
+            required
+            autocomplete="off"
+        /></label>
+        <label class="server"
+          >Server URL<input
+            id="server"
+            type="text"
+            inputmode="url"
+            spellcheck="false"
+            autocomplete="off"
+            aria-describedby="server-help"
+        /></label>
+        <button id="connect" type="submit">Connect</button>
+        <button id="disconnect" class="secondary" type="button" hidden>
+          Disconnect
+        </button>
+      </form>
+      <div class="connection-info">
+        <p id="status" role="status" aria-live="polite">
+          Ready when you are. Connect to join a team.
+        </p>
+        <details>
+          <summary>Connecting to another server</summary>
+          <p id="server-help">
+            Enter the full address, for example
+            <code>wss://game.example.edu/ws</code>. A hosted HTTPS client needs
+            WSS with a valid certificate. For a local tutorial, run the Python
+            server and open <code>http://localhost:8000</code>. Your browser may
+            ask for local-network permission.
+          </p>
+        </details>
+      </div>
+      <section class="game" aria-label="Shared territory game">
+        <div class="scoreboard">
+          <div class="team black">
+            <span class="swatch" aria-hidden="true"></span><span>BLACK</span
+            ><strong id="black-score">—</strong>
+          </div>
+          <div class="round">
+            <span id="round-label">ROUND</span><strong id="timer">03:00</strong>
+          </div>
+          <div class="team white">
+            <strong id="white-score">—</strong><span>WHITE</span
+            ><span class="swatch" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="coverage" aria-hidden="true">
+          <span id="black-bar"></span><span id="white-bar"></span>
+        </div>
+        <div class="arena">
+          <canvas
+            id="world"
+            width="1200"
+            height="720"
+            tabindex="0"
+            aria-label="Multiplayer physics world. Your square is marked YOU with a pink outline. Use arrow keys or WASD; up jumps, down descends faster."
+          ></canvas>
+          <div id="empty" class="empty">
+            <p>Make your mark.</p>
+            <span
+              >Connect, find your square, and jump.<br />Every descent paints
+              for your team.</span
+            >
+          </div>
+        </div>
+        <div class="game-info">
+          <p id="you">
+            Look for the <span class="you-accent">pink outline + YOU</span>
+          </p>
+          <p id="population">0 players connected</p>
+        </div>
+      </section>
+      <nav class="touch-controls" aria-label="Touch game controls">
+        <button type="button" data-control="left" aria-label="Move left">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 5 7 12l7 7M7 12h13" /></svg
+          ><span>Left</span>
+        </button>
+        <button type="button" data-control="jump" aria-label="Jump">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 10 7-7 7 7M12 3v18" /></svg
+          ><span>Jump</span>
+        </button>
+        <button type="button" data-control="down" aria-label="Descend faster">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 14 7 7 7-7M12 21V3" /></svg
+          ><span>Down</span>
+        </button>
+        <button type="button" data-control="right" aria-label="Move right">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m10 5 7 7-7 7M17 12H4" /></svg
+          ><span>Right</span>
+        </button>
+      </nav>
+      <footer>
+        <p>
+          <kbd>←</kbd> <kbd>→</kbd> move <span>·</span> <kbd>↑</kbd> jump
+          <span>·</span> <kbd>↓</kbd> descend faster <span>·</span> WASD also
+          works
+        </p>
+        <p>
+          Land on the floor or another square to recharge. Release jump before
+          jumping again. Painting is automatic while you fall.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

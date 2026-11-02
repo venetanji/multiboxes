@@ -29,7 +29,7 @@ def test_balanced_teams_unique_nonoverlapping_spawns_and_cleanup():
     assert [p.team for p in players].count(1) == 75
     assert [p.team for p in players].count(2) == 75
     for i, a in enumerate(players):
-        for b in players[i + 1:]:
+        for b in players[i + 1 :]:
             assert a.body.position.get_distance(b.body.position) >= world.config.player_size
     removed = players[0]
     world.remove_player(removed.id)
@@ -149,6 +149,7 @@ def test_same_tick_paint_is_deterministic_and_last_valid_paint_wins():
         put(world, b, 426, 201, 50)
         world.step(0)
         return world.snapshot()["paint"], world.counts
+
     assert run() == run()
     world = World()
     a, b = world.add_player("a", now=0), world.add_player("b", now=0)
@@ -189,3 +190,36 @@ def test_round_end_freezes_paint_and_teacher_reset_is_complete():
     assert world.phase == "playing"
     assert math.isclose(world.remaining, 1)
     assert world.snapshot()["round"] == 3
+
+
+def test_automatic_round_restart_clears_grid_and_restarts_clock():
+    world = World(Config(round_seconds=1, intermission_seconds=0.25))
+    world.add_player("round", now=0)
+    advance(world, 1.1)
+    assert world.phase == "finished"
+    for i in range(20):
+        world.step(1.1 + i / 60)
+        if world.phase == "playing":
+            break
+    assert world.phase == "playing"
+    assert world.round == 2
+    assert world.remaining == 1
+    assert world.counts == [len(world.paint), 0, 0]
+
+
+def test_round_reset_does_not_turn_held_jump_into_a_fresh_press():
+    world = World()
+    player = world.add_player("held", now=0)
+    land(world, player)
+    world.set_input(player.id, Input(jump=True), now=0.3)
+    world.step(0.3)
+    for i in range(100):
+        t = 0.34 + i / 60
+        world.set_input(player.id, Input(jump=True), now=t)
+        world.step(t)
+    assert player.jump_ready
+    world.reset_round(start=True)
+    world.set_input(player.id, Input(jump=True), now=2.1)
+    world.step(2.1)
+    assert world.jumps == 1
+    assert abs(player.body.velocity.y) < 2

@@ -18,8 +18,14 @@ def join(ws, name="Box"):
 
 
 def input_message(seq=0, **buttons):
-    return {"type": "input", "seq": seq, "left": False, "right": False,
-            "jump": False, "down": False} | buttons
+    return {
+        "type": "input",
+        "seq": seq,
+        "left": False,
+        "right": False,
+        "jump": False,
+        "down": False,
+    } | buttons
 
 
 def test_join_inputs_disconnect_reconnect_full_snapshot_and_body_cleanup():
@@ -44,8 +50,15 @@ def test_join_inputs_disconnect_reconnect_full_snapshot_and_body_cleanup():
             assert [p[0] for p in welcome2["state"]["players"]] == [welcome2["you"]]
 
 
-@pytest.mark.parametrize("bad", [{"type": "join", "v": 1, "nickname": "again"},
-    input_message(seq=0, team=2), input_message(seq=-1), {"type": "reset"}])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"type": "join", "v": 1, "nickname": "again"},
+        input_message(seq=0, team=2),
+        input_message(seq=-1),
+        {"type": "reset"},
+    ],
+)
 def test_duplicate_join_or_invalid_input_closes_without_body_leak(bad):
     app = create_app()
     with TestClient(app) as client:
@@ -126,8 +139,11 @@ async def test_slow_sender_does_not_block_world_and_queues_hold_latest_complete_
     for peer in (slow, fast):
         peer.player_id = hub.world.add_player("Box", now=asyncio.get_running_loop().time()).id
         hub.peers.add(peer)
-    tasks = [asyncio.create_task(hub.run()), asyncio.create_task(hub.send(slow)),
-             asyncio.create_task(hub.send(fast))]
+    tasks = [
+        asyncio.create_task(hub.run()),
+        asyncio.create_task(hub.send(slow)),
+        asyncio.create_task(hub.send(fast)),
+    ]
     try:
         await asyncio.sleep(0.2)
         assert hub.world.tick >= 10
@@ -192,3 +208,26 @@ def test_shared_serialization_is_one_object_and_newest_state_is_complete():
     state = json.loads(b.queue.get_nowait())
     assert state["paint"] == "0" * 1500
     assert [p[0] for p in state["players"]] == [b.player_id]
+
+
+async def test_transport_already_closed_during_cleanup_is_safe():
+    import anyio
+
+    class ClosedSocket(FakeSocket):
+        async def close(self, **kwargs):
+            raise anyio.ClosedResourceError
+
+    hub = Hub(World())
+    peer = Peer(ClosedSocket())
+    peer.player_id = hub.world.add_player("closed", now=0).id
+    hub.peers.add(peer)
+    await hub.close(peer)
+    assert not hub.world.players
+    assert not hub.peers
+
+
+def test_malformed_origin_rejected_without_server_error():
+    with TestClient(create_app()) as client:
+        with pytest.raises(WebSocketDisconnect):
+            with client.websocket_connect("/ws", headers={"origin": "http://[invalid"}):
+                pass

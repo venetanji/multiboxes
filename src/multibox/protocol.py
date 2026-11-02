@@ -49,6 +49,7 @@ def parse_input(message: dict) -> tuple[int, Input]:
 
 class RateLimiter:
     """Per-session 60 messages/s token bucket, with a 90-message burst ceiling."""
+
     def __init__(self, *, now: float):
         self.at, self.tokens = now, 90.0
 

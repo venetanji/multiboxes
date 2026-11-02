@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import anyio
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -36,8 +37,10 @@ def distribution(values):
     ordered = sorted(values)
     if not ordered:
         return {"p50": 0, "p95": 0, "p99": 0, "max": 0}
-    return {key: round(ordered[min(len(ordered)-1, int((len(ordered)-1)*p))], 3)
-            for key, p in (("p50", 0.5), ("p95", 0.95), ("p99", 0.99), ("max", 1))}
+    return {
+        key: round(ordered[min(len(ordered) - 1, int((len(ordered) - 1) * p))], 3)
+        for key, p in (("p50", 0.5), ("p95", 0.95), ("p99", 0.99), ("max", 1))
+    }
 
 
 class Hub:
@@ -51,13 +54,22 @@ class Hub:
         self.discarded_lag = 0.0
 
     def metrics(self):
-        return {"tick": self.world.tick, "players": len(self.world.players), "sessions": len(self.peers),
-                "tick_lag_ms": distribution(self.tick_lag), "step_ms": distribution(self.step_time),
-                "discarded_lag_seconds": round(self.discarded_lag, 4),
-                "queue_max": self.queue_max, "queue_replacements": self.queue_replacements,
-                "slow_disconnects": self.slow_disconnects, "snapshots": self.snapshots,
-                "sent_bytes": self.sent_bytes, "sent_states": self.sent_states,
-                "paint_writes": self.world.paint_writes, "jumps": self.world.jumps}
+        return {
+            "tick": self.world.tick,
+            "players": len(self.world.players),
+            "sessions": len(self.peers),
+            "tick_lag_ms": distribution(self.tick_lag),
+            "step_ms": distribution(self.step_time),
+            "discarded_lag_seconds": round(self.discarded_lag, 4),
+            "queue_max": self.queue_max,
+            "queue_replacements": self.queue_replacements,
+            "slow_disconnects": self.slow_disconnects,
+            "snapshots": self.snapshots,
+            "sent_bytes": self.sent_bytes,
+            "sent_states": self.sent_states,
+            "paint_writes": self.world.paint_writes,
+            "jumps": self.world.jumps,
+        }
 
     def publish(self):
         # One serialization for everybody. Every queued object is the SAME string.
@@ -79,7 +91,14 @@ class Hub:
         self.peers.discard(peer)
         if peer.player_id:
             self.world.remove_player(peer.player_id)
-        with suppress(TimeoutError, RuntimeError, OSError, WebSocketDisconnect):
+        with suppress(
+            TimeoutError,
+            RuntimeError,
+            OSError,
+            WebSocketDisconnect,
+            anyio.ClosedResourceError,
+            anyio.BrokenResourceError,
+        ):
             await asyncio.wait_for(peer.ws.close(code=code, reason=reason), timeout=0.25)
 
     async def send(self, peer: Peer):
@@ -96,8 +115,12 @@ class Hub:
             await self.close(peer)
 
     async def expire(self, now):
-        expired = [peer for peer in self.peers if peer.player_id and
-                   now - self.world.players[peer.player_id].input_at > self.world.config.idle_timeout]
+        expired = [
+            peer
+            for peer in self.peers
+            if peer.player_id
+            and now - self.world.players[peer.player_id].input_at > self.world.config.idle_timeout
+        ]
         if expired:
             await asyncio.gather(*(self.close(peer, reason="input heartbeat expired") for peer in expired))
 
@@ -133,13 +156,27 @@ def origin_allowed(ws, allowed_origins):
         return True
     if origin in allowed_origins:
         return True
-    parsed = urlsplit(origin)
-    return (parsed.scheme in ("http", "https") and parsed.netloc.lower() == ws.headers.get("host", "").lower()
-            and not parsed.path and not parsed.query and not parsed.fragment and not parsed.username)
+    try:
+        parsed = urlsplit(origin)
+    except ValueError:
+        return False
+    return (
+        parsed.scheme in ("http", "https")
+        and parsed.netloc.lower() == ws.headers.get("host", "").lower()
+        and not parsed.path
+        and not parsed.query
+        and not parsed.fragment
+        and not parsed.username
+    )
 
 
-def create_app(config: Config | None = None, *, teacher_token: str | None = None,
-               allowed_origins: tuple[str, ...] = (), join_timeout: float = 5) -> FastAPI:
+def create_app(
+    config: Config | None = None,
+    *,
+    teacher_token: str | None = None,
+    allowed_origins: tuple[str, ...] = (),
+    join_timeout: float = 5,
+) -> FastAPI:
     hub = Hub(World(config))
 
     @asynccontextmanager
@@ -211,8 +248,10 @@ def create_app(config: Config | None = None, *, teacher_token: str | None = None
             loop = asyncio.get_running_loop()
             player = hub.world.add_player(name, now=loop.time())
             peer.player_id = player.id
-            await asyncio.wait_for(ws.send_json({"type": "welcome", "v": 1, "you": player.id,
-                                               "state": hub.world.snapshot()}), timeout=hub.send_timeout)
+            await asyncio.wait_for(
+                ws.send_json({"type": "welcome", "v": 1, "you": player.id, "state": hub.world.snapshot()}),
+                timeout=hub.send_timeout,
+            )
             sender = asyncio.create_task(hub.send(peer), name=f"send-{player.id}")
             limiter = RateLimiter(now=loop.time())
             while peer.active:
@@ -232,8 +271,12 @@ def create_app(config: Config | None = None, *, teacher_token: str | None = None
         finally:
             if sender:
                 sender.cancel()
-                await asyncio.gather(sender, return_exceptions=True)
-            await hub.close(peer)
+            # ASGI hosts may cancel this handler during socket teardown. Shield
+            # bounded cleanup from their cancel scope so no body/sender survives.
+            with anyio.CancelScope(shield=True):
+                await hub.close(peer)
+                if sender:
+                    await asyncio.gather(sender, return_exceptions=True)
 
     app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="client")
     return app
@@ -246,12 +289,27 @@ def main():
     parser.add_argument("--max-players", type=int, default=160)
     parser.add_argument("--round-seconds", type=float, default=180)
     args = parser.parse_args()
-    origins = tuple(x.strip().rstrip("/") for x in os.getenv("MULTIBOX_ALLOWED_ORIGINS", "").split(",") if x.strip())
-    app = create_app(Config(max_players=args.max_players, round_seconds=args.round_seconds),
-                     teacher_token=os.getenv("MULTIBOX_TEACHER_TOKEN"), allowed_origins=origins)
-    uvicorn.run(app, host=args.host, port=args.port, workers=1, ws="websockets", ws_max_size=MAX_MESSAGE_BYTES,
-                ws_max_queue=4, ws_per_message_deflate=False, ws_ping_interval=10, ws_ping_timeout=10,
-                access_log=False)
+    origins = tuple(
+        x.strip().rstrip("/") for x in os.getenv("MULTIBOX_ALLOWED_ORIGINS", "").split(",") if x.strip()
+    )
+    app = create_app(
+        Config(max_players=args.max_players, round_seconds=args.round_seconds),
+        teacher_token=os.getenv("MULTIBOX_TEACHER_TOKEN"),
+        allowed_origins=origins,
+    )
+    uvicorn.run(
+        app,
+        host=args.host,
+        port=args.port,
+        workers=1,
+        ws="websockets",
+        ws_max_size=MAX_MESSAGE_BYTES,
+        ws_max_queue=4,
+        ws_per_message_deflate=False,
+        ws_ping_interval=10,
+        ws_ping_timeout=10,
+        access_log=False,
+    )
 
 
 if __name__ == "__main__":
