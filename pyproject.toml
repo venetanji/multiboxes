@@ -1,19 +1,44 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "multibox"
 version = "0.1.0"
-description = "A UDP-based game server for pygame and pymunk in asyncio"
+description = "An authoritative multiplayer physics and territory-painting classroom starter"
 authors = [{ name = "Giovanni Lion", email = "giovanni.lion@gmail.com" }]
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 
 dependencies = [
-    "pygame",
-    "pymunk",
-    "python-osc",
-    "zeroconf"
+    "pymunk==7.1.0",
+    "fastapi==0.162.0",
+    "starlette==1.10.0",
+    "uvicorn==0.35.0",
+    "websockets==15.0.1",
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest",
-    "pytest-asyncio"
+    "pytest==8.4.1",
+    "pytest-asyncio==1.0.0",
+    "httpx==0.28.1",
+    "httpx2==2.16.0",
+    "psutil==7.0.0",
+    "ruff==0.12.4",
 ]
+native = ["pygame==2.6.1"]
+legacy-discovery = ["python-osc==1.9.3", "zeroconf==0.147.0"]
+
+[tool.setuptools.package-data]
+multibox = ["static/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]

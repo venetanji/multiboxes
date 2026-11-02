@@ -1,158 +1,200 @@
-# Study Guide: Multiboxes Multiplayer Game
+# Two-hour tutorial: a shared physics world
 
-This study guide helps students understand the key concepts demonstrated in this project.
+**Goal:** understand client → application messages, shared state and server-owned
+state changes by modifying a working game. The networking and physics starter is
+provided. No database, accounts or complete engine implementation is required.
 
-## 1. Asyncio (Asynchronous Programming)
+Before class: teacher rehearses two devices on campus Wi-Fi, checks the chosen
+HTTP or WSS endpoint and allowed browser origin, and keeps the teacher token
+private. Students need Python 3.11/3.12, a browser and this checkout. If installation
+fails, pair with someone whose supplied starter runs and inspect the same files.
 
-### Key Concepts
-- **Coroutines**: Functions defined with `async def`
-- **Awaiting**: Using `await` to pause execution until something completes
-- **Event Loop**: The core that runs all async operations
-- **Tasks**: Units of concurrent work
+| Minutes | Activity | Evidence to show your partner |
+| --- | --- | --- |
+| 0–15 | Install and run the supplied starter | Local client connects and shows your pink YOU square |
+| 15–30 | Connect two tabs | Two identities, balanced BLACK/WHITE teams, shared painting |
+| 30–50 | Inspect input/state messages | One input message and one complete state snapshot |
+| 50–70 | Change one server rule | A visible difference affecting both clients |
+| 70–85 | Observe server authority | A rejected forged state update and an unchanged shared rule |
+| 85–100 | Blur, disconnect and reconnect | Released input, removed old square, full rejoin state |
+| 100–110 | Join the classroom world | The same client connected to the teacher's server |
+| 110–120 | Explain the message/state cycle | A short account of input → physics → paint → snapshot → render |
 
-### Where to Look in the Code
-- `game_server.py`: Lines 35-72 (`game_loop` function)
-- `game_client.py`: Lines 140-170 (`main` function)
+## 0–15: run the starter
 
-### Study Questions
-1. Why does the game loop use `await asyncio.sleep(1/60)`?
-2. How many things are happening "at the same time" in the client?
-3. What would happen if we didn't use `await` in the game loop?
+Follow [README setup](README.md#run-locally). Start:
 
-## 2. Network Programming with OSC
+```sh
+python -m multibox.game_server
+```
 
-### Key Concepts
-- **UDP**: Connectionless protocol (faster but less reliable than TCP)
-- **OSC**: Open Sound Control message format
-- **Dispatcher**: Routes incoming messages to handler functions
-- **Client/Server**: Architecture where server coordinates, clients display
+Open http://localhost:8000, enter a nickname and click Connect. Move with arrows or
+WASD. Jump once, release, land and jump again. Hold Down while falling. The server
+paints your square's footprint only when its downward velocity exceeds the paint
+threshold. There is no paint button or mass toggle.
 
-### Where to Look in the Code
-- `game_server.py`: Lines 74-112 (message handlers)
-- `game_client.py`: Lines 74-105 (message handlers)
+## 15–30: two views, one world
 
-### Study Questions
-1. What OSC messages are sent from client to server?
-2. What OSC messages are sent from server to client?
-3. Why use UDP instead of TCP for games?
+During play, **Settings** opens connection controls and **Resume game** returns
+keyboard focus to the arena. The document does not scroll while playing; fields
+in the overlay keep normal text-editing keys.
+On a phone, use the arrow cross: up to jump, left/right to move and down to fall
+faster. Hold one direction while tapping another. The arena fills the available
+portrait width; in short landscape the cross moves beside it. Rotating or resizing releases held controls; press again to continue.
 
-## 3. Physics Simulation
+Open a second tab. Confirm different temporary identities and balanced teams. The
+pink outline and YOU label belong only to the square controlled by that tab.
+Teammates can support one another: stack, jump from a square, and descend over a
+new area. A side bump does not recharge jumping. Holding Up through a landing
+does not automatically jump again; a fresh press is required.
 
-### Key Concepts
-- **Physics Space**: The world where physics calculations happen
-- **Body**: An object that can move and have forces applied to it
-- **Shape**: The collision boundary of an object
-- **Forces**: What causes objects to move or change direction
+Find a patch painted by the other team and repaint it while descending. Compare
+both screens' scores. Grey is neutral and is included in percentage denominators.
 
-### Where to Look in the Code
-- `game_server.py`: Lines 144-175 (`create_space` function)
-- `game_server.py`: Lines 114-142 (`create_player` function)
+## 30–50: inspect the messages
 
-### Study Questions
-1. What properties affect how bouncy a collision is?
-2. How does gravity work in this physics world?
-3. What happens when a player reaches maximum velocity?
+Open browser developer tools → Network → WS → `/ws` → Messages (names vary by
+browser). Reconnect while recording. Find:
 
-## 4. Service Discovery with Zeroconf
+```json
+{"type":"join","v":2,"nickname":"Box"}
+{"type":"input","seq":12,"left":false,"right":true,"jump":false,"down":false}
+```
 
-### Key Concepts
-- **Service Discovery**: Automatically finding services on the network
-- **Zeroconf/Avahi**: Protocol for automatic network configuration
-- **Service Info**: Describes what service is available and where
+The JSON welcome includes `you`. A reliable JSON metadata message maps numeric
+wire slots to identities/nicknames. Following **binary** snapshots contain the
+whole paint grid and every player’s motion/flags; no previous gameplay frame is
+needed. The supplied decoder reconstructs a readable state object. Find your decoded player row by matching `you` to its first value. Decode
+it using [the protocol tables](docs/protocol.md#binary-frame-layout). `vy > 0` means descending because
+screen y increases downward. Notice that input messages request buttons, not x/y,
+team or score. Held input is refreshed at 20 Hz; physics steps independently.
 
-### Where to Look in the Code
-- `avahi_utils.py`: All functions, especially `register_service`
-- `game_client.py`: Lines 42-73 (`connect_to_server` function)
+Trace these files together:
 
-### Study Questions
-1. Why use service discovery instead of hardcoded IP addresses?
-2. What information is included in a ServiceInfo object?
-3. How does the client find the server automatically?
+1. `static/app.mjs`: `sendInput` sends held buttons.
+2. `protocol.py`: `parse_input` checks types and permitted fields.
+3. `simulation.py`: `World.step` applies force/impulse, steps Pymunk and paints.
+4. `game_server.py`: `Hub.publish` packs one complete frame shared by all clients.
+   `wire.py` / `static/wire.mjs` encode/decode numeric fields and two-bit paint.
+5. `static/app.mjs`: rendering interpolates positions between snapshots.
 
-## 5. Game Architecture Patterns
+Distinguish an HTTP request/response (loading HTML or `/health`) from a continuing
+bidirectional WebSocket connection. OSC is a format commonly carried by UDP;
+WebSockets here use TCP. They are different transports, not different physics.
 
-### Client-Server Model
-- **Server**: Authoritative (makes all the decisions)
-- **Client**: Display only (shows what server tells it)
-- **Input**: Clients send input, server processes it
+## 50–70: change a rule
 
-### Where to Look in the Code
-- Server authority: `game_server.py` lines 35-72 (physics runs on server)
-- Client display: `game_client.py` lines 107-124 (just draws what server says)
+Stop your **local** server. In `simulation.py`, change one `Config` default, such as
+`jump_speed` from 390 to 460 or `down_acceleration` from 1400 to 900. Restart the
+server and reconnect both tabs. Predict and observe the change. Keep forces small
+enough for collisions to remain useful, and change one value at a time.
 
-### Study Questions
-1. Why does physics run on the server instead of each client?
-2. What happens if there's network lag?
-3. How could you make movement feel more responsive?
+Run `python -m pytest tests/test_simulation.py -q`. Explain any failed expectation:
+some tests intentionally pin the original game feel. Do not remove validation or
+assertions simply to get green output. Restore your experiment before joining the
+teacher's world if you want to keep the original local behavior.
 
-## 6. Python Packaging
+An optional renderer exercise: change the local outline colour in `drawPlayer`.
+Only that browser's display changes; the authoritative team and score do not.
 
-### Key Concepts
-- **Modules**: Python files that can be imported
-- **Packages**: Directories containing modules with `__init__.py`
-- **pyproject.toml**: Modern Python project configuration
-- **Development Install**: Installing a package you're still working on
+## 70–85: observe authority
 
-### Where to Look in the Code
-- `pyproject.toml`: Project configuration
-- `src/multibox/__init__.py`: Package definition
-- Directory structure: How modules are organized
+Use a separate developer-tools Console connection so the intentionally invalid
+message does not interfere with your playing tab:
 
-### Study Questions
-1. Why put source code in a `src/` directory?
-2. What's the difference between `pip install .` and `pip install -e .`?
-3. How do relative imports work (the `.` in `from .player import Player`)?
+```js
+const probe = new WebSocket(document.getElementById('server').value);
+probe.onopen = () => probe.send(JSON.stringify({type:'join',v:2,nickname:'probe'}));
+probe.onmessage = event => {
+  if (typeof event.data !== 'string') return;
+  const message = JSON.parse(event.data);
+  if (message.type === 'welcome')
+    probe.send(JSON.stringify({type:'input',seq:0,left:false,right:false,jump:false,down:false,x:999}));
+};
+probe.onclose = event => console.log(event.code, event.reason);
+```
 
-## Practical Exercises
+The server rejects the extra `x` field (code 1008) and cleans up that square. A
+client cannot assign itself a team, give itself unlimited jumps, set a score or
+reset everyone's round. Discuss why changing Canvas pixels cannot change shared
+physics. The teacher's HTTP reset API uses a private bearer token, never a token
+embedded in student JavaScript.
 
-### Beginner
-1. **Change colors**: Modify `player.py` to make players different colors
-2. **Adjust physics**: Change gravity or friction values in `create_space`
-3. **Add debug output**: Print player positions in the game loop
+## 85–100: lifecycle and resynchronization
 
-### Intermediate
-1. **Add player names**: Extend the Player class to have names
-2. **Score system**: Count collisions or time alive
-3. **Different player sizes**: Make some players bigger/smaller
+Hold a movement key, switch focus away, then return. Inputs clear; inertia can
+still carry a physical body briefly. Open Settings and click Disconnect. The other tab should lose
+that square. Reconnect: the old body is gone, the new identity gets a complete
+current grid/roster, and team assignment is balanced again. Nicknames are labels,
+not accounts or proof of identity.
 
-### Advanced
-1. **Smooth movement**: Add interpolation between position updates
-2. **Predict movement**: Make clients predict where they'll move
-3. **Multiple rooms**: Allow different game instances
+Open Settings and edit Server URL. The previous connection closes immediately; connecting to the
+new URL requires clicking Connect. Try an unavailable local port and read the
+error. A client must not display a fake successful session. Restore the original
+URL and reconnect. Explain why replacing a full snapshot is safe while silently
+dropping an incremental paint event would lose information.
 
-## Common Debugging Tips
+## 100–110: classroom shared world
 
-### "Import could not be resolved"
-- Make sure you activated the virtual environment
-- Run `uv pip install -e .` to install in development mode
+Use the teacher-provided full server URL. For same-origin local HTTP, the supplied
+client defaults to `ws://localhost:8000/ws`. A hosted HTTPS Pages client requires a
+WSS endpoint with a valid certificate and an explicitly allowed origin. An IP
+address alone does not provide TLS. If hosted-to-local access is blocked, return
+to the HTTP client served by your local Python app; do not disable browser security.
 
-### "No server found"
-- Start the server first with `python launcher.py server`
-- Check that both client and server are on the same network
+The shared world runs on one Python process. Your local rule edits cannot change
+it. Work as a team to build a stack, reach higher ground, descend and repaint.
 
-### Game runs slowly
-- Physics simulation is CPU intensive
-- Try connecting fewer clients
-- Reduce the FPS if needed
+## 110–120: explain and extend
 
-### Port already in use
-- Stop other instances of the server
-- The error happens when running multiple servers
+Show your partner the input/state messages and describe one visible state change.
+Separate transport (WebSocket/TCP), application logic (team, jump and painting),
+physics (Pymunk) and rendering (Canvas/Pygame). Explain how a slow reader is bounded
+and why localhost performance is not the same as campus Wi-Fi performance.
 
-## Next Steps
+**Next week:** design a final-round results record with round ID, time, team
+coverage and winner. Save it once when the application finishes a round, outside
+the physics loop. Discuss how to retry without inserting the same result twice.
+Do not add a database write for every physics tick or input packet today.
 
-After understanding this project, you can:
 
-1. **Learn more asyncio**: Try `aiohttp` for web servers
-2. **Study game networking**: Look into lag compensation techniques  
-3. **Explore physics**: Try more complex PyMunk features
-4. **Build something new**: Create your own multiplayer game!
+### Optional decoder inspection (within 30–50 minutes)
 
-## Additional Resources
+DevTools shows binary frames, not a JSON dump of every position. Use the supplied
+codec rather than writing a networking engine. On your local client, paste:
 
-- [Python Asyncio Documentation](https://docs.python.org/3/library/asyncio.html)
-- [PyMunk Physics Documentation](http://www.pymunk.org/en/latest/)
-- [Pygame Tutorial](https://www.pygame.org/wiki/tutorials)
-- [OSC Specification](http://opensoundcontrol.org/spec-1_0)
+```js
+const {FrameDecoder} = await import('./wire.mjs');
+const decoder = new FrameDecoder();
+const probe = new WebSocket(document.getElementById('server').value);
+probe.binaryType = 'arraybuffer';
+probe.onopen = () => probe.send(JSON.stringify({type:'join',v:2,nickname:'inspect'}));
+probe.onmessage = event => {
+  if (typeof event.data === 'string') {
+    const message = JSON.parse(event.data);
+    if (message.type === 'metadata') decoder.metadata(message);
+  } else {
+    console.log(decoder.frame(event.data)); // readable state: paint, players, scores
+    probe.close();
+  }
+};
+```
 
-Remember: The best way to learn is to experiment! Try changing things and see what happens.
+Compare the `MBX2` header, a 14-byte player record and the two-bit paint example
+in [the protocol reference](docs/protocol.md). Ask why a dropped old gameplay frame
+is safe, and why a frame must be paired with the right roster revision before a
+wire slot can be interpreted. JSON input remains easy to inspect and modify.
+
+### Pair exercise / optional container extension
+
+During 100–110 minutes, spend **five minutes** on the consenting-pair
+[ping and HTTP-port exercise](docs/classroom-networking.md), then use the teacher's
+class server if Wi-Fi prevents peer access. Ping checks ICMP reachability, not
+whether the game server is running. Keep the remaining time for shared play.
+
+For a **10–15 minute optional extension or teacher demonstration**, use the same
+guide to build your own image from the supplied Dockerfile, run it locally, and
+reconnect the identical browser client. Explain image vs container, dependencies
+and host/container port mapping. This is optional when image downloads would eat
+into the two-hour practical; no registry publication or infrastructure setup is
+part of the exercise.

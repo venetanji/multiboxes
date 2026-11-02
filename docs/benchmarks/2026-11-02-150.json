@@ -1,0 +1,845 @@
+{
+  "environment": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "logical_cpus": 5,
+    "cpu_quota": "400000 100000",
+    "memory_limit": "17179869184",
+    "transport": "loopback, no TLS/compression",
+    "generator": "same machine, separate process from server; 10 Hz held input plus fresh jump presses"
+  },
+  "clients": 150,
+  "slow_readers": 5,
+  "duration_seconds": 120.2,
+  "warmup_seconds": 5,
+  "server_metrics": {
+    "tick": 7523,
+    "players": 149,
+    "sessions": 149,
+    "tick_lag_ms": {
+      "p50": 0.742,
+      "p95": 1.715,
+      "p99": 2.072,
+      "max": 15.261
+    },
+    "step_ms": {
+      "p50": 2.601,
+      "p95": 3.155,
+      "p99": 4.267,
+      "max": 7.271
+    },
+    "discarded_lag_seconds": 0.0,
+    "queue_max": 1,
+    "queue_replacements": 342,
+    "slow_disconnects": 18,
+    "snapshots": 2507,
+    "sent_bytes": 3826784710,
+    "sent_states": 370814,
+    "paint_writes": 420110,
+    "jumps": 27441
+  },
+  "tick_hz": 60.006,
+  "fast_client_snapshot_hz": {
+    "p50": 19.999,
+    "p95": 19.999,
+    "p99": 19.999,
+    "max": 19.999
+  },
+  "input_to_snapshot_ms": {
+    "p50": 32.013,
+    "p95": 69.543,
+    "p99": 74.816,
+    "max": 88.048
+  },
+  "latency_samples": 171507,
+  "join_ms": {
+    "p50": 98.315,
+    "p95": 117.165,
+    "p99": 119.498,
+    "max": 120.499
+  },
+  "normal_unexpected_disconnects": 0,
+  "slow_reader_disconnects": 17,
+  "connections_including_rejoins": 195,
+  "moved_clients": 150,
+  "paint_snapshot_changes": 362968,
+  "server_payload_mbit_s": 244.393,
+  "consumed_payload_mbit_s": 239.62,
+  "server_cpu_percent": {
+    "p50": 29.0,
+    "p95": 32.2,
+    "p99": 33.0,
+    "max": 34.0
+  },
+  "generator_cpu_percent": {
+    "p50": 48.0,
+    "p95": 51.9,
+    "p99": 52.4,
+    "max": 57.9
+  },
+  "rss_mb": {
+    "start": 48.0,
+    "end": 50.43,
+    "peak": 50.43
+  },
+  "samples": [
+    {
+      "t": 1.0,
+      "rss_mb": 48.0,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 38.0
+    },
+    {
+      "t": 2.0,
+      "rss_mb": 48.0,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 39.0
+    },
+    {
+      "t": 3.0,
+      "rss_mb": 48.01,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 40.0
+    },
+    {
+      "t": 4.0,
+      "rss_mb": 48.02,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 40.0
+    },
+    {
+      "t": 5.01,
+      "rss_mb": 48.15,
+      "cpu_percent": 30.9,
+      "generator_cpu_percent": 40.9
+    },
+    {
+      "t": 6.01,
+      "rss_mb": 48.15,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 40.0
+    },
+    {
+      "t": 7.01,
+      "rss_mb": 48.16,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 41.0
+    },
+    {
+      "t": 8.01,
+      "rss_mb": 48.17,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 40.0
+    },
+    {
+      "t": 9.01,
+      "rss_mb": 48.17,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 41.0
+    },
+    {
+      "t": 10.01,
+      "rss_mb": 48.25,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 42.0
+    },
+    {
+      "t": 11.01,
+      "rss_mb": 48.3,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 42.0
+    },
+    {
+      "t": 12.01,
+      "rss_mb": 48.3,
+      "cpu_percent": 32.0,
+      "generator_cpu_percent": 44.9
+    },
+    {
+      "t": 13.01,
+      "rss_mb": 48.31,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 43.0
+    },
+    {
+      "t": 14.01,
+      "rss_mb": 48.31,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 41.0
+    },
+    {
+      "t": 15.01,
+      "rss_mb": 48.69,
+      "cpu_percent": 32.0,
+      "generator_cpu_percent": 43.0
+    },
+    {
+      "t": 16.01,
+      "rss_mb": 48.73,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 42.0
+    },
+    {
+      "t": 17.01,
+      "rss_mb": 48.73,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 41.0
+    },
+    {
+      "t": 18.01,
+      "rss_mb": 48.73,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 41.0
+    },
+    {
+      "t": 19.02,
+      "rss_mb": 48.73,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 42.0
+    },
+    {
+      "t": 20.02,
+      "rss_mb": 48.73,
+      "cpu_percent": 28.9,
+      "generator_cpu_percent": 42.9
+    },
+    {
+      "t": 21.02,
+      "rss_mb": 48.74,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 42.0
+    },
+    {
+      "t": 22.02,
+      "rss_mb": 48.74,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 42.0
+    },
+    {
+      "t": 23.02,
+      "rss_mb": 48.74,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 41.0
+    },
+    {
+      "t": 24.02,
+      "rss_mb": 48.74,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 42.0
+    },
+    {
+      "t": 25.02,
+      "rss_mb": 49.42,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 43.9
+    },
+    {
+      "t": 26.02,
+      "rss_mb": 49.46,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 41.9
+    },
+    {
+      "t": 27.02,
+      "rss_mb": 49.46,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 45.0
+    },
+    {
+      "t": 28.02,
+      "rss_mb": 49.48,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 41.9
+    },
+    {
+      "t": 29.04,
+      "rss_mb": 49.48,
+      "cpu_percent": 27.4,
+      "generator_cpu_percent": 46.1
+    },
+    {
+      "t": 30.05,
+      "rss_mb": 49.49,
+      "cpu_percent": 32.9,
+      "generator_cpu_percent": 47.9
+    },
+    {
+      "t": 31.05,
+      "rss_mb": 49.5,
+      "cpu_percent": 33.0,
+      "generator_cpu_percent": 51.9
+    },
+    {
+      "t": 32.05,
+      "rss_mb": 49.52,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 45.0
+    },
+    {
+      "t": 33.05,
+      "rss_mb": 49.52,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 45.0
+    },
+    {
+      "t": 34.05,
+      "rss_mb": 49.52,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 46.9
+    },
+    {
+      "t": 35.05,
+      "rss_mb": 49.55,
+      "cpu_percent": 32.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 36.05,
+      "rss_mb": 49.56,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 37.05,
+      "rss_mb": 49.58,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 45.0
+    },
+    {
+      "t": 38.05,
+      "rss_mb": 49.58,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 46.0
+    },
+    {
+      "t": 39.05,
+      "rss_mb": 49.58,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 46.9
+    },
+    {
+      "t": 40.06,
+      "rss_mb": 49.59,
+      "cpu_percent": 33.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 41.06,
+      "rss_mb": 49.59,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 42.06,
+      "rss_mb": 49.59,
+      "cpu_percent": 30.9,
+      "generator_cpu_percent": 49.9
+    },
+    {
+      "t": 43.06,
+      "rss_mb": 49.8,
+      "cpu_percent": 29.9,
+      "generator_cpu_percent": 46.9
+    },
+    {
+      "t": 44.06,
+      "rss_mb": 49.81,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 45.06,
+      "rss_mb": 49.87,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 47.9
+    },
+    {
+      "t": 46.06,
+      "rss_mb": 49.89,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 49.0
+    },
+    {
+      "t": 47.06,
+      "rss_mb": 49.91,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 49.0
+    },
+    {
+      "t": 48.07,
+      "rss_mb": 49.91,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 46.0
+    },
+    {
+      "t": 49.07,
+      "rss_mb": 49.91,
+      "cpu_percent": 27.9,
+      "generator_cpu_percent": 45.9
+    },
+    {
+      "t": 50.07,
+      "rss_mb": 49.91,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 54.0
+    },
+    {
+      "t": 51.07,
+      "rss_mb": 49.91,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 52.07,
+      "rss_mb": 49.91,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 53.07,
+      "rss_mb": 49.91,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 54.07,
+      "rss_mb": 49.91,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 55.07,
+      "rss_mb": 50.0,
+      "cpu_percent": 32.0,
+      "generator_cpu_percent": 51.0
+    },
+    {
+      "t": 56.07,
+      "rss_mb": 50.03,
+      "cpu_percent": 27.9,
+      "generator_cpu_percent": 46.9
+    },
+    {
+      "t": 57.07,
+      "rss_mb": 50.07,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 58.08,
+      "rss_mb": 50.1,
+      "cpu_percent": 28.7,
+      "generator_cpu_percent": 49.5
+    },
+    {
+      "t": 59.1,
+      "rss_mb": 50.11,
+      "cpu_percent": 27.6,
+      "generator_cpu_percent": 47.4
+    },
+    {
+      "t": 60.1,
+      "rss_mb": 50.11,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 46.9
+    },
+    {
+      "t": 61.1,
+      "rss_mb": 50.11,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 62.1,
+      "rss_mb": 50.12,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 47.9
+    },
+    {
+      "t": 63.1,
+      "rss_mb": 50.12,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 48.9
+    },
+    {
+      "t": 64.1,
+      "rss_mb": 50.12,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 65.1,
+      "rss_mb": 50.16,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 66.1,
+      "rss_mb": 50.16,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 67.1,
+      "rss_mb": 50.16,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 68.11,
+      "rss_mb": 50.16,
+      "cpu_percent": 31.9,
+      "generator_cpu_percent": 46.9
+    },
+    {
+      "t": 69.11,
+      "rss_mb": 50.16,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 70.11,
+      "rss_mb": 50.16,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 49.0
+    },
+    {
+      "t": 71.11,
+      "rss_mb": 50.16,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 49.0
+    },
+    {
+      "t": 72.11,
+      "rss_mb": 50.16,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 73.11,
+      "rss_mb": 50.16,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 74.11,
+      "rss_mb": 50.16,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 75.11,
+      "rss_mb": 50.18,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 51.0
+    },
+    {
+      "t": 76.11,
+      "rss_mb": 50.18,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 49.0
+    },
+    {
+      "t": 77.11,
+      "rss_mb": 50.18,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 49.9
+    },
+    {
+      "t": 78.11,
+      "rss_mb": 50.18,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 79.11,
+      "rss_mb": 50.18,
+      "cpu_percent": 28.9,
+      "generator_cpu_percent": 46.9
+    },
+    {
+      "t": 80.11,
+      "rss_mb": 50.18,
+      "cpu_percent": 34.0,
+      "generator_cpu_percent": 51.0
+    },
+    {
+      "t": 81.12,
+      "rss_mb": 50.19,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 46.9
+    },
+    {
+      "t": 82.12,
+      "rss_mb": 50.19,
+      "cpu_percent": 32.0,
+      "generator_cpu_percent": 51.0
+    },
+    {
+      "t": 83.12,
+      "rss_mb": 50.19,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 84.12,
+      "rss_mb": 50.2,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 85.14,
+      "rss_mb": 50.21,
+      "cpu_percent": 32.2,
+      "generator_cpu_percent": 50.7
+    },
+    {
+      "t": 86.15,
+      "rss_mb": 50.21,
+      "cpu_percent": 29.9,
+      "generator_cpu_percent": 48.9
+    },
+    {
+      "t": 87.15,
+      "rss_mb": 50.21,
+      "cpu_percent": 29.9,
+      "generator_cpu_percent": 48.8
+    },
+    {
+      "t": 88.15,
+      "rss_mb": 50.22,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 89.15,
+      "rss_mb": 50.22,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 51.9
+    },
+    {
+      "t": 90.15,
+      "rss_mb": 50.23,
+      "cpu_percent": 31.9,
+      "generator_cpu_percent": 51.9
+    },
+    {
+      "t": 91.16,
+      "rss_mb": 50.23,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 50.9
+    },
+    {
+      "t": 92.16,
+      "rss_mb": 50.23,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 93.16,
+      "rss_mb": 50.23,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 94.16,
+      "rss_mb": 50.23,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 49.9
+    },
+    {
+      "t": 95.16,
+      "rss_mb": 50.27,
+      "cpu_percent": 30.9,
+      "generator_cpu_percent": 50.9
+    },
+    {
+      "t": 96.16,
+      "rss_mb": 50.28,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 49.9
+    },
+    {
+      "t": 97.16,
+      "rss_mb": 50.29,
+      "cpu_percent": 29.9,
+      "generator_cpu_percent": 51.9
+    },
+    {
+      "t": 98.16,
+      "rss_mb": 50.29,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 99.16,
+      "rss_mb": 50.29,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 49.0
+    },
+    {
+      "t": 100.17,
+      "rss_mb": 50.3,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 47.9
+    },
+    {
+      "t": 101.17,
+      "rss_mb": 50.3,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 102.17,
+      "rss_mb": 50.3,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 49.0
+    },
+    {
+      "t": 103.17,
+      "rss_mb": 50.31,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 104.17,
+      "rss_mb": 50.33,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 105.17,
+      "rss_mb": 50.34,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 48.0
+    },
+    {
+      "t": 106.17,
+      "rss_mb": 50.37,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 107.17,
+      "rss_mb": 50.37,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 108.17,
+      "rss_mb": 50.38,
+      "cpu_percent": 27.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 109.17,
+      "rss_mb": 50.38,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 48.9
+    },
+    {
+      "t": 110.17,
+      "rss_mb": 50.38,
+      "cpu_percent": 34.0,
+      "generator_cpu_percent": 57.9
+    },
+    {
+      "t": 111.17,
+      "rss_mb": 50.38,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 51.9
+    },
+    {
+      "t": 112.19,
+      "rss_mb": 50.38,
+      "cpu_percent": 27.7,
+      "generator_cpu_percent": 50.4
+    },
+    {
+      "t": 113.2,
+      "rss_mb": 50.38,
+      "cpu_percent": 28.7,
+      "generator_cpu_percent": 52.4
+    },
+    {
+      "t": 114.2,
+      "rss_mb": 50.4,
+      "cpu_percent": 30.0,
+      "generator_cpu_percent": 50.0
+    },
+    {
+      "t": 115.2,
+      "rss_mb": 50.43,
+      "cpu_percent": 32.0,
+      "generator_cpu_percent": 50.9
+    },
+    {
+      "t": 116.2,
+      "rss_mb": 50.43,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 49.0
+    },
+    {
+      "t": 117.2,
+      "rss_mb": 50.43,
+      "cpu_percent": 33.0,
+      "generator_cpu_percent": 49.9
+    },
+    {
+      "t": 118.2,
+      "rss_mb": 50.43,
+      "cpu_percent": 28.0,
+      "generator_cpu_percent": 48.9
+    },
+    {
+      "t": 119.2,
+      "rss_mb": 50.43,
+      "cpu_percent": 29.0,
+      "generator_cpu_percent": 47.0
+    },
+    {
+      "t": 120.2,
+      "rss_mb": 50.43,
+      "cpu_percent": 31.0,
+      "generator_cpu_percent": 51.0
+    }
+  ],
+  "checks": {
+    "all_clients_moved": true,
+    "painting_active": true,
+    "jumping_active": true,
+    "normal_connections_stable": true,
+    "tick_hz_at_least_59": true,
+    "snapshot_p50_at_least_19": true,
+    "input_p95_under_150ms": true,
+    "queue_at_most_one": true,
+    "all_bodies_cleaned": true
+  },
+  "after_disconnect": {
+    "tick": 7647,
+    "players": 0,
+    "sessions": 0,
+    "tick_lag_ms": {
+      "p50": 0.743,
+      "p95": 1.73,
+      "p99": 2.075,
+      "max": 15.261
+    },
+    "step_ms": {
+      "p50": 2.605,
+      "p95": 3.162,
+      "p99": 4.267,
+      "max": 7.271
+    },
+    "discarded_lag_seconds": 0.0,
+    "queue_max": 1,
+    "queue_replacements": 3025,
+    "slow_disconnects": 19,
+    "snapshots": 2549,
+    "sent_bytes": 3829885848,
+    "sent_states": 371111,
+    "paint_writes": 423777,
+    "jumps": 27441
+  }
+}
