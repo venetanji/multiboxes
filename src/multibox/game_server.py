@@ -23,6 +23,7 @@ import uvicorn
 
 from .protocol import MAX_MESSAGE_BYTES, ProtocolError, RateLimiter, decode, parse_input, parse_join
 from .simulation import Config, World
+from .wire import Encoder
 
 
 @dataclass(eq=False)
@@ -31,6 +32,7 @@ class Peer:
     player_id: str | None = None
     queue: asyncio.Queue = field(default_factory=lambda: asyncio.Queue(maxsize=1))
     active: bool = True
+    sent_revision: int = 0
 
 
 def distribution(values):
@@ -52,6 +54,9 @@ class Hub:
         self.queue_max = self.queue_replacements = self.slow_disconnects = 0
         self.snapshots = self.sent_bytes = self.sent_states = 0
         self.discarded_lag = 0.0
+        self.encoder = Encoder()
+        self.sent_metadata = self.metadata_bytes = self.binary_bytes = self.welcome_bytes = 0
+        self.frame_bytes = 0
 
     def metrics(self):
         return {
@@ -67,13 +72,19 @@ class Hub:
             "snapshots": self.snapshots,
             "sent_bytes": self.sent_bytes,
             "sent_states": self.sent_states,
+            "sent_metadata": self.sent_metadata,
+            "metadata_bytes": self.metadata_bytes,
+            "binary_bytes": self.binary_bytes,
+            "welcome_bytes": self.welcome_bytes,
+            "frame_bytes": self.frame_bytes,
             "paint_writes": self.world.paint_writes,
             "jumps": self.world.jumps,
         }
 
     def publish(self):
         # One serialization for everybody. Every queued object is the SAME string.
-        state = json.dumps(self.world.snapshot(), separators=(",", ":"), ensure_ascii=True)
+        state = self.encoder.packet(self.world)
+        self.frame_bytes = len(state.frame)
         self.snapshots += 1
         for peer in self.peers:
             if not peer.player_id or not peer.active:
@@ -105,8 +116,15 @@ class Hub:
         try:
             while peer.active:
                 state = await peer.queue.get()
-                await asyncio.wait_for(peer.ws.send_text(state), timeout=self.send_timeout)
-                self.sent_bytes += len(state)  # ensure_ascii means characters == UTF-8 bytes.
+                if peer.sent_revision != state.revision:
+                    await asyncio.wait_for(peer.ws.send_text(state.metadata), timeout=self.send_timeout)
+                    peer.sent_revision = state.revision
+                    self.metadata_bytes += len(state.metadata)
+                    self.sent_bytes += len(state.metadata)
+                    self.sent_metadata += 1
+                await asyncio.wait_for(peer.ws.send_bytes(state.frame), timeout=self.send_timeout)
+                self.binary_bytes += len(state.frame)
+                self.sent_bytes += len(state.frame)
                 self.sent_states += 1
         except TimeoutError:
             self.slow_disconnects += 1
@@ -248,10 +266,10 @@ def create_app(
             loop = asyncio.get_running_loop()
             player = hub.world.add_player(name, now=loop.time())
             peer.player_id = player.id
-            await asyncio.wait_for(
-                ws.send_json({"type": "welcome", "v": 1, "you": player.id, "state": hub.world.snapshot()}),
-                timeout=hub.send_timeout,
-            )
+            welcome = json.dumps({"type": "welcome", "v": 2, "you": player.id}, separators=(",", ":"))
+            await asyncio.wait_for(ws.send_text(welcome), timeout=hub.send_timeout)
+            hub.welcome_bytes += len(welcome)
+            hub.sent_bytes += len(welcome)
             sender = asyncio.create_task(hub.send(peer), name=f"send-{player.id}")
             limiter = RateLimiter(now=loop.time())
             while peer.active:

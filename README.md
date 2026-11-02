@@ -24,7 +24,10 @@ python -m multibox.game_server
 
 Open **http://localhost:8000** in two tabs, choose nicknames and click **Connect**.
 The client defaults to the same origin's `/ws`. Arrows or WASD work; Space also
-jumps. The on-screen buttons support touch and keyboard activation. Input clears
+jumps. The on-screen buttons support touch and keyboard activation. Connected play fills
+the viewport without document scrolling; **Settings** opens connection settings
+and Disconnect, and **Resume game** restores canvas focus. The shared landscape
+world keeps its aspect ratio, so portrait/short screens can have letterboxing. Input clears
 on blur, hidden tabs, form focus and disconnect; stale input also expires at the
 server after 0.5 seconds. Reconnect gives a new temporary identity and full state.
 
@@ -80,7 +83,7 @@ controls. No infrastructure or Pages settings are changed by installing this rep
 python -m pip install -c requirements.lock -e '.[test,native]'
 python -m pytest -q
 ruff check src tests scripts
-node --test tests/client.test.mjs
+node --test tests/*.test.mjs
 npm ci --prefix tests/browser
 # Linux + Docker + a Python 3.12 environment; non-root Chromium with sandbox checks:
 MULTIBOX_PYTHON=python scripts/browser_check.sh /tmp/multibox-browser
@@ -92,8 +95,9 @@ python scripts/load_test.py --clients 150 --seconds 120 --slow 5 --output /tmp/l
 [Measured load results and limitations](docs/load-test.md) distinguish loopback
 capacity, browser checks and the still-required campus Wi-Fi/device rehearsal.
 Physics targets 60 Hz and full state snapshots 20 Hz; these are targets, not a
-promise for arbitrary hardware. Snapshot JSON is serialized once, shared across
-bounded one-state queues, and each client sends independently with a timeout.
+promise for arbitrary hardware. Packed complete frames use 14 bytes/player and two-bit paint; reliable versioned
+metadata carries names/constants. Each frame is encoded once, shared across
+bounded one-packet queues, and each client sends independently with a timeout.
 One slow client cannot hold up the world. No database writes occur in physics;
 saving final round results is a next-week exercise.
 
@@ -109,6 +113,10 @@ separate simulation.
 OSC is a message format often used over UDP. UDP has no connection or guaranteed
 ordering/delivery; the old discovery/listener assumptions do not map to a browser.
 WebSockets provide bidirectional messages over TCP (WSS adds TLS). Reliable delivery
-also means slow readers need explicit backpressure handling. Full snapshots make
+also means slow readers need explicit backpressure handling. Complete gameplay frames and reliable metadata make
 queue replacement and reconnect safe; students do not have to write a networking
 engine to change the game.
+
+The [classroom networking guide](docs/classroom-networking.md) includes a short
+paired ping/HTTP exercise, firewall and campus-Wi-Fi troubleshooting, and an
+optional build-your-own Docker image exercise.

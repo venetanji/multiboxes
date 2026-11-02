@@ -12,6 +12,7 @@ import pygame
 from websockets.asyncio.client import connect
 
 from .player import Player
+from .wire import Decoder
 
 COLOURS = [(166, 173, 162), (32, 35, 31), (250, 250, 245)]
 KEYS = {
@@ -59,16 +60,30 @@ def draw_state(screen, state, you, objects):
     screen.blit(pygame.font.Font(None, 26).render(label, True, COLOURS[1]), (16, 17))
 
 
+async def receive_state(ws, decoder):
+    while True:
+        raw = await ws.recv()
+        if isinstance(raw, str):
+            if len(raw) > 65536:
+                raise ValueError("server metadata too large")
+            decoder.metadata(json.loads(raw))
+        else:
+            state = decoder.frame(raw)
+            if state is not None:
+                return state
+
+
 async def run_client(server, nickname, *, max_frames=None, screenshot=None):
     pygame.init()
     receiver = None
     try:
         async with connect(server, max_size=131072, max_queue=2, compression=None) as ws:
-            await ws.send(json.dumps({"type": "join", "v": 1, "nickname": nickname}))
+            await ws.send(json.dumps({"type": "join", "v": 2, "nickname": nickname}))
             welcome = json.loads(await asyncio.wait_for(ws.recv(), timeout=8))
-            if welcome.get("type") != "welcome" or welcome.get("v") != 1:
-                raise ValueError("expected Multiboxes v1 welcome")
-            you, state = welcome["you"], welcome["state"]
+            if welcome.get("type") != "welcome" or welcome.get("v") != 2:
+                raise ValueError("expected Multiboxes v2 welcome")
+            you, decoder = welcome["you"], Decoder()
+            state = await asyncio.wait_for(receive_state(ws, decoder), timeout=8)
             screen = pygame.display.set_mode((state["world"][0], state["world"][1] + 54))
             pygame.display.set_caption(
                 "Multiboxes · Black / White · arrows/WASD, up jumps, down paints faster"
@@ -77,12 +92,8 @@ async def run_client(server, nickname, *, max_frames=None, screenshot=None):
 
             async def receive():
                 nonlocal state
-                async for raw in ws:
-                    message = json.loads(raw)
-                    if message.get("type") != "state":
-                        raise ValueError("expected full state")
-                    state = message
-                raise ConnectionError("server disconnected")
+                while True:
+                    state = await receive_state(ws, decoder)
 
             receiver = asyncio.create_task(receive())
             last_send, frames, running = 0, 0, True

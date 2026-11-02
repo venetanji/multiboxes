@@ -35,6 +35,10 @@ threshold. There is no paint button or mass toggle.
 
 ## 15–30: two views, one world
 
+During play, **Settings** opens connection controls and **Resume game** returns
+keyboard focus to the arena. The document does not scroll while playing; fields
+in the overlay keep normal text-editing keys.
+
 Open a second tab. Confirm different temporary identities and balanced teams. The
 pink outline and YOU label belong only to the square controlled by that tab.
 Teammates can support one another: stack, jump from a square, and descend over a
@@ -50,13 +54,15 @@ Open browser developer tools → Network → WS → `/ws` → Messages (names va
 browser). Reconnect while recording. Find:
 
 ```json
-{"type":"join","v":1,"nickname":"Box"}
+{"type":"join","v":2,"nickname":"Box"}
 {"type":"input","seq":12,"left":false,"right":true,"jump":false,"down":false}
 ```
 
-The welcome includes `you` and a complete `state`. Following snapshots contain the
-whole grid and roster. Find your row by matching `you` to its first value. Decode
-it using [the row table](docs/protocol.md#state). `vy > 0` means descending because
+The JSON welcome includes `you`. A reliable JSON metadata message maps numeric
+wire slots to identities/nicknames. Following **binary** snapshots contain the
+whole paint grid and every player’s motion/flags; no previous gameplay frame is
+needed. The supplied decoder reconstructs a readable state object. Find your decoded player row by matching `you` to its first value. Decode
+it using [the protocol tables](docs/protocol.md#binary-frame-layout). `vy > 0` means descending because
 screen y increases downward. Notice that input messages request buttons, not x/y,
 team or score. Held input is refreshed at 20 Hz; physics steps independently.
 
@@ -65,7 +71,8 @@ Trace these files together:
 1. `static/app.mjs`: `sendInput` sends held buttons.
 2. `protocol.py`: `parse_input` checks types and permitted fields.
 3. `simulation.py`: `World.step` applies force/impulse, steps Pymunk and paints.
-4. `game_server.py`: `Hub.publish` serializes one full snapshot for all clients.
+4. `game_server.py`: `Hub.publish` packs one complete frame shared by all clients.
+   `wire.py` / `static/wire.mjs` encode/decode numeric fields and two-bit paint.
 5. `static/app.mjs`: rendering interpolates positions between snapshots.
 
 Distinguish an HTTP request/response (loading HTML or `/health`) from a continuing
@@ -94,8 +101,9 @@ message does not interfere with your playing tab:
 
 ```js
 const probe = new WebSocket(document.getElementById('server').value);
-probe.onopen = () => probe.send(JSON.stringify({type:'join',v:1,nickname:'probe'}));
+probe.onopen = () => probe.send(JSON.stringify({type:'join',v:2,nickname:'probe'}));
 probe.onmessage = event => {
+  if (typeof event.data !== 'string') return;
   const message = JSON.parse(event.data);
   if (message.type === 'welcome')
     probe.send(JSON.stringify({type:'input',seq:0,left:false,right:false,jump:false,down:false,x:999}));
@@ -112,12 +120,12 @@ embedded in student JavaScript.
 ## 85–100: lifecycle and resynchronization
 
 Hold a movement key, switch focus away, then return. Inputs clear; inertia can
-still carry a physical body briefly. Click Disconnect. The other tab should lose
+still carry a physical body briefly. Open Settings and click Disconnect. The other tab should lose
 that square. Reconnect: the old body is gone, the new identity gets a complete
 current grid/roster, and team assignment is balanced again. Nicknames are labels,
 not accounts or proof of identity.
 
-Edit Server URL. The previous connection closes immediately; connecting to the
+Open Settings and edit Server URL. The previous connection closes immediately; connecting to the
 new URL requires clicking Connect. Try an unavailable local port and read the
 error. A client must not display a fake successful session. Restore the original
 URL and reconnect. Explain why replacing a full snapshot is safe while silently
@@ -145,3 +153,45 @@ and why localhost performance is not the same as campus Wi-Fi performance.
 coverage and winner. Save it once when the application finishes a round, outside
 the physics loop. Discuss how to retry without inserting the same result twice.
 Do not add a database write for every physics tick or input packet today.
+
+
+### Optional decoder inspection (within 30–50 minutes)
+
+DevTools shows binary frames, not a JSON dump of every position. Use the supplied
+codec rather than writing a networking engine. On your local client, paste:
+
+```js
+const {FrameDecoder} = await import('./wire.mjs');
+const decoder = new FrameDecoder();
+const probe = new WebSocket(document.getElementById('server').value);
+probe.binaryType = 'arraybuffer';
+probe.onopen = () => probe.send(JSON.stringify({type:'join',v:2,nickname:'inspect'}));
+probe.onmessage = event => {
+  if (typeof event.data === 'string') {
+    const message = JSON.parse(event.data);
+    if (message.type === 'metadata') decoder.metadata(message);
+  } else {
+    console.log(decoder.frame(event.data)); // readable state: paint, players, scores
+    probe.close();
+  }
+};
+```
+
+Compare the `MBX2` header, a 14-byte player record and the two-bit paint example
+in [the protocol reference](docs/protocol.md). Ask why a dropped old gameplay frame
+is safe, and why a frame must be paired with the right roster revision before a
+wire slot can be interpreted. JSON input remains easy to inspect and modify.
+
+### Pair exercise / optional container extension
+
+During 100–110 minutes, spend **five minutes** on the consenting-pair
+[ping and HTTP-port exercise](docs/classroom-networking.md), then use the teacher's
+class server if Wi-Fi prevents peer access. Ping checks ICMP reachability, not
+whether the game server is running. Keep the remaining time for shared play.
+
+For a **10–15 minute optional extension or teacher demonstration**, use the same
+guide to build your own image from the supplied Dockerfile, run it locally, and
+reconnect the identical browser client. Explain image vs container, dependencies
+and host/container port mapping. This is optional when image downloads would eat
+into the two-hour practical; no registry publication or infrastructure setup is
+part of the exercise.

@@ -7,7 +7,7 @@ from multibox.simulation import Input
 
 
 def test_valid_messages_and_no_client_authority():
-    assert parse_join(decode('{"type":"join","v":1,"nickname":"  Box  "}')) == "Box"
+    assert parse_join(decode('{"type":"join","v":2,"nickname":"  Box  "}')) == "Box"
     seq, buttons = parse_input(
         {"type": "input", "seq": 1, "left": False, "right": True, "jump": False, "down": True}
     )
@@ -25,7 +25,8 @@ def test_decode_rejects_invalid_or_oversized(raw):
 @pytest.mark.parametrize(
     "changes",
     [
-        {"v": 2},
+        {"v": 3},
+        {"v": 1},
         {"v": True},
         {"nickname": ""},
         {"nickname": "x" * 25},
@@ -36,7 +37,7 @@ def test_decode_rejects_invalid_or_oversized(raw):
 )
 def test_join_rejects_invalid_or_spoofed(changes):
     with pytest.raises(ProtocolError):
-        parse_join({"type": "join", "v": 1, "nickname": "Box"} | changes)
+        parse_join({"type": "join", "v": 2, "nickname": "Box"} | changes)
 
 
 @pytest.mark.parametrize(

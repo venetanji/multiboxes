@@ -1,0 +1,8 @@
+{
+  "metadata": {"type":"metadata","v":2,"revision":"9007199254740993","world":[1200,720,24,24],"physics_hz":60,"players":[[1,"p18446744073709551615","同学"]]},
+  "header_hex":"4d4258320201010001000000000020003c000000000000000300000040e2010000000000dc050000",
+  "player_hex":"0100410e82144024fc06ffffff7f",
+  "paint_byte_hex":"24", "paint_bytes":375,
+  "expected":{"id":"p18446744073709551615","nickname":"同学","team":2,"x":100.0625,"y":200.125,"angle":1.5707963267948966,"vy":-123.5,"jump":true,"seq":2147483647,"tick":60,"round":3,"remaining":123.456,"coverage":[50,25,25]},
+  "paint_pattern":"0120", "paint_repeats":375
+}

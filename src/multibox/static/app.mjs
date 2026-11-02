@@ -1,3 +1,4 @@
+import { FrameDecoder } from "./wire.mjs";
 import {
   serverUrl,
   HeldInput,
@@ -13,6 +14,29 @@ paintCanvas.width = 1200;
 paintCanvas.height = 720;
 const paintCtx = paintCanvas.getContext("2d");
 const input = new HeldInput();
+const setupParent = $("setup").parentNode;
+function restoreSetup() {
+  const active = document.activeElement,
+    inside = $("setup").contains(active);
+  const selection =
+    inside && active.tagName === "INPUT"
+      ? [active.selectionStart, active.selectionEnd]
+      : null;
+  setupParent.prepend($("setup"));
+  if (you) canvas.focus({ preventScroll: true });
+  else if (inside) {
+    active.focus({ preventScroll: true });
+    if (selection) active.setSelectionRange(...selection);
+  }
+}
+$("open-settings").addEventListener("click", () => {
+  clearInput();
+  $("settings-content").append($("setup"));
+  $("settings").showModal();
+  $("resume").focus();
+});
+$("resume").addEventListener("click", () => $("settings").close());
+$("settings").addEventListener("close", restoreSetup);
 const colours = ["#a6ada2", "#20231f", "#fafaf5"];
 const keyMap = {
   ArrowLeft: "left",
@@ -80,6 +104,10 @@ function disconnect(
     );
   socket = null;
   you = null;
+  document.body.classList.remove("playing");
+  $("open-settings").hidden = true;
+  if ($("settings").open) $("settings").close();
+  restoreSetup();
   frames = [];
   lastPaint = null;
   clearInput();
@@ -159,6 +187,9 @@ function connect(event) {
     localStorage.setItem("multibox-nickname", name);
   } catch {}
   const current = new WebSocket(url);
+  current.binaryType = "arraybuffer";
+  const decoder = new FrameDecoder();
+  let joined = false;
   socket = current;
   sequence = 0;
   $("connect").textContent = "Connecting…";
@@ -172,34 +203,48 @@ function connect(event) {
   }, 8000);
   current.onopen = () => {
     if (socket !== current) return;
-    current.send(JSON.stringify({ type: "join", v: 1, nickname: name }));
+    current.send(JSON.stringify({ type: "join", v: 2, nickname: name }));
   };
   current.onmessage = (event) => {
     if (socket !== current) return; // Late events from a switched URL cannot mutate this session.
     try {
-      if (typeof event.data !== "string" || event.data.length > 131072)
-        throw new Error("Unsupported server message.");
-      const message = JSON.parse(event.data);
-      if (
-        message.type === "welcome" &&
-        !you &&
-        message.v === 1 &&
-        typeof message.you === "string"
-      ) {
-        you = message.you;
-        acceptState(message.state);
-        clearTimeout(timeout);
-        spawnedAt = performance.now();
-        $("empty").hidden = true;
-        $("connect").textContent = "Reconnect";
-        canvas.focus({ preventScroll: true });
-        heartbeat = setInterval(sendInput, 50);
-        sendInput();
-      } else if (message.type === "state" && you) acceptState(message);
-      else
-        throw new Error(
-          "Unexpected server protocol. Use a Multiboxes v1 server.",
-        );
+      if (typeof event.data === "string") {
+        if (event.data.length > 65536)
+          throw new Error("Server metadata is too large.");
+        const message = JSON.parse(event.data);
+        if (
+          message.type === "welcome" &&
+          !you &&
+          message.v === 2 &&
+          typeof message.you === "string"
+        ) {
+          you = message.you;
+        } else if (message.type === "metadata" && you)
+          decoder.metadata(message);
+        else
+          throw new Error(
+            "Unexpected server protocol. Use a Multiboxes v2 server.",
+          );
+      } else {
+        if (!you) throw new Error("Missing server welcome.");
+        const state = decoder.frame(event.data);
+        if (!state) return;
+        acceptState(state);
+        if (!joined) {
+          joined = true;
+          document.body.classList.add("playing");
+          $("open-settings").hidden = false;
+          if ($("settings").open) $("settings").close();
+          restoreSetup();
+          clearTimeout(timeout);
+          spawnedAt = performance.now();
+          $("empty").hidden = true;
+          $("connect").textContent = "Reconnect";
+          canvas.focus({ preventScroll: true });
+          heartbeat = setInterval(sendInput, 50);
+          sendInput();
+        }
+      }
     } catch (error) {
       disconnect(error.message, true);
     }
@@ -237,9 +282,20 @@ try {
 for (const type of ["keydown", "keyup"])
   window.addEventListener(type, (event) => {
     const button = keyMap[event.code];
-    const editing = /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(
-      event.target.tagName,
-    );
+    const editing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName);
+    const ownsInput =
+      document.body.classList.contains("playing") &&
+      !$("settings").open &&
+      !event.target.isContentEditable;
+    if (!ownsInput) {
+      if (type === "keyup" && input.set(event.code, button, false)) sendInput();
+      return;
+    }
+    if (
+      event.target.tagName === "BUTTON" &&
+      ["Space", "Enter"].includes(event.code)
+    )
+      return;
     if (
       !button ||
       (type === "keydown" &&
@@ -335,7 +391,16 @@ function drawPaint(state) {
 function drawPlayer(row, now) {
   const local = row[0] === you,
     size = 24;
-  const screenScale = Math.max(1, 1200 / canvas.clientWidth);
+  const screenScale = local
+    ? Math.max(
+        1,
+        1200 /
+          Math.max(
+            1,
+            Math.min(canvas.clientWidth, (canvas.clientHeight * 5) / 3),
+          ),
+      )
+    : 1;
   ctx.save();
   ctx.translate(row[3], row[4]);
   ctx.rotate(row[5]);

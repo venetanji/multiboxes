@@ -11,6 +11,7 @@ from websockets.asyncio.server import serve
 
 from multibox.game_client import draw_state, run_client
 from multibox.simulation import World
+from multibox.wire import Encoder
 
 
 def test_native_renders_team_colours_and_local_accent():
@@ -33,14 +34,17 @@ async def test_native_joins_receives_full_state_and_sends_buttons():
 
     async def handler(ws):
         received.append(json.loads(await ws.recv()))
-        await ws.send(json.dumps({"type": "welcome", "v": 1, "you": player.id, "state": world.snapshot()}))
+        await ws.send(json.dumps({"type": "welcome", "v": 2, "you": player.id}))
+        packet = Encoder().packet(world)
+        await ws.send(packet.metadata)
+        await ws.send(packet.frame)
         async for raw in ws:
             received.append(json.loads(raw))
 
     async with serve(handler, "127.0.0.1", 0) as server:
         port = server.sockets[0].getsockname()[1]
         await run_client(f"ws://127.0.0.1:{port}/ws", "native", max_frames=5)
-    assert received[0] == {"type": "join", "v": 1, "nickname": "native"}
+    assert received[0] == {"type": "join", "v": 2, "nickname": "native"}
     assert any(message.get("type") == "input" and message["jump"] is False for message in received[1:])
 
 
@@ -51,8 +55,11 @@ async def test_native_short_jump_edge_and_focus_loss_release_buttons():
 
     async def handler(ws):
         await ws.recv()
-        await ws.send(json.dumps({"type": "welcome", "v": 1, "you": player.id, "state": world.snapshot()}))
+        await ws.send(json.dumps({"type": "welcome", "v": 2, "you": player.id}))
         phase = 0
+        packet = Encoder().packet(world)
+        await ws.send(packet.metadata)
+        await ws.send(packet.frame)
         async for raw in ws:
             message = json.loads(raw)
             received.append(message)

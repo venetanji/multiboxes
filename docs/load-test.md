@@ -1,6 +1,10 @@
-# Measured local load and verification
+# Load results: preserved JSON baseline and packed protocol v2
 
-Measured 2026-11-02 in a separate Multiboxes checkout, using the new authoritative
+**The table below is the preserved protocol-v1 JSON baseline at `cbb7a060`.**
+Protocol-v2 binary measurements are being added below after the comparable runs;
+the binary byte budget in the protocol reference is arithmetic, not measurement.
+
+Measured 2026-11-02 in a separate Multiboxes checkout, using the original JSON authoritative
 server and `scripts/load_test.py`. No Alive app/fixtures or campus server was used.
 The browser suite was stopped during capacity measurement.
 

@@ -27,11 +27,13 @@ from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
 
 from multibox.game_server import distribution
+from multibox.wire import Decoder
 
 
 class Bot:
-    def __init__(self, index, url, *, slow=False):
-        self.index, self.url, self.slow = index, url, slow
+    def __init__(self, index, url, *, slow=False, input_hz=20):
+        self.index, self.url, self.slow, self.input_hz = index, url, slow, input_hz
+        self.inputs_sent = self.input_bytes = 0
         self.ws = None
         self.ready = asyncio.Event()
         self.controlled_close = False
@@ -59,15 +61,17 @@ class Bot:
                         ws.transport.get_extra_info("socket").setsockopt(
                             socket.SOL_SOCKET, socket.SO_RCVBUF, 4096
                         )
-                    await ws.send(json.dumps({"type": "join", "v": 1, "nickname": f"bot {self.index}"}))
-                    welcome = json.loads(await ws.recv())
+                    await ws.send(json.dumps({"type": "join", "v": 2, "nickname": f"bot {self.index}"}))
+                    welcome_raw = await ws.recv()
+                    self.bytes += len(welcome_raw)
+                    welcome = json.loads(welcome_raw)
                     if welcome.get("type") != "welcome":
                         raise ValueError("missing welcome")
                     self.connections += 1
                     self.ready.set()
                     if self.join_ms is None:
                         self.join_ms = (time.perf_counter() - first_attempt) * 1000
-                    you, latest = welcome["you"], welcome["state"]
+                    you, decoder, latest_tick = welcome["you"], Decoder(), -1
                     pending, seq, last_ack, previous_paint = {}, 0, -1, None
                     origin = None
                     jump_ready = False
@@ -87,21 +91,29 @@ class Bot:
                             # Bound test instrumentation even when a slow reader never acknowledges.
                             if len(pending) > 100:
                                 del pending[min(pending)]
-                            await ws.send(json.dumps({"type": "input", "seq": seq, **buttons}))
+                            raw_input = json.dumps({"type": "input", "seq": seq, **buttons})
+                            await ws.send(raw_input)
+                            self.inputs_sent += 1
+                            self.input_bytes += len(raw_input)
                             seq += 1
-                            await asyncio.sleep(0.1)
+                            await asyncio.sleep(1 / self.input_hz)
 
                     async def receive():
-                        nonlocal latest, last_ack, previous_paint, origin, jump_ready
+                        nonlocal latest_tick, last_ack, previous_paint, origin, jump_ready
                         while True:
                             if self.slow:
                                 await asyncio.sleep(2)
                             raw = await ws.recv()
                             self.bytes += len(raw)
-                            state = json.loads(raw)
-                            if state.get("type") != "state" or state["tick"] < latest["tick"]:
-                                raise ValueError("invalid/out-of-order state")
-                            latest = state
+                            if isinstance(raw, str):
+                                decoder.metadata(json.loads(raw))
+                                continue
+                            state = decoder.frame(raw)
+                            if state is None:
+                                continue
+                            if state["tick"] < latest_tick:
+                                raise ValueError("out-of-order state")
+                            latest_tick = state["tick"]
                             self.states += 1
                             row = next((p for p in state["players"] if p[0] == you), None)
                             if row is None:
@@ -155,7 +167,7 @@ def read_optional(path):
         return "unavailable"
 
 
-def environment():
+def environment(input_hz):
     model = next(
         (
             line.split(":", 1)[1].strip()
@@ -171,8 +183,8 @@ def environment():
         "logical_cpus": os.cpu_count(),
         "cpu_quota": read_optional("/sys/fs/cgroup/cpu.max"),
         "memory_limit": read_optional("/sys/fs/cgroup/memory.max"),
-        "transport": "loopback, no TLS/compression",
-        "generator": "same machine, separate process from server; 10 Hz held input plus fresh jump presses",
+        "transport": "loopback WebSocket v2, no TLS/compression",
+        "generator": f"same machine, separate process from server; {input_hz} Hz held input plus fresh jump presses",
     }
 
 
@@ -191,7 +203,10 @@ async def exercise(args, process, port, token):
             await asyncio.sleep(0.1)
         else:
             raise RuntimeError("local server not ready")
-        bots = [Bot(i, f"ws://127.0.0.1:{port}/ws", slow=i < args.slow) for i in range(args.clients)]
+        bots = [
+            Bot(i, f"ws://127.0.0.1:{port}/ws", slow=i < args.slow, input_hz=args.input_hz)
+            for i in range(args.clients)
+        ]
         tasks = [asyncio.create_task(bot.run()) for bot in bots]
         try:
             await asyncio.wait_for(asyncio.gather(*(bot.ready.wait() for bot in bots)), timeout=20)
@@ -200,7 +215,7 @@ async def exercise(args, process, port, token):
             baseline = (await http.get("/admin/metrics")).json()
             for bot in bots:
                 bot.latencies.clear()
-                bot.bytes = bot.states = 0
+                bot.bytes = bot.states = bot.inputs_sent = bot.input_bytes = 0
             server = psutil.Process(process.pid)
             generator = psutil.Process()
             server.cpu_percent()
@@ -241,7 +256,11 @@ async def exercise(args, process, port, token):
             latencies = [sample for bot in fast for sample in bot.latencies]
             tick_hz = (final["tick"] - baseline["tick"]) / duration
             result = {
-                "environment": environment(),
+                "environment": environment(args.input_hz),
+                "protocol": 2,
+                "input_hz_target": args.input_hz,
+                "input_hz_observed": distribution([bot.inputs_sent / duration for bot in fast]),
+                "input_payload_mbit_s": round(sum(bot.input_bytes for bot in bots) * 8 / duration / 1e6, 3),
                 "clients": args.clients,
                 "slow_readers": args.slow,
                 "duration_seconds": round(duration, 2),
@@ -292,6 +311,7 @@ async def exercise(args, process, port, token):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input-hz", type=int, choices=(10, 20), default=20)
     parser.add_argument("--clients", type=int, default=100)
     parser.add_argument("--seconds", type=float, default=120)
     parser.add_argument("--slow", type=int, default=5)

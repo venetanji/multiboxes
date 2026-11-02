@@ -37,5 +37,5 @@ exec "${multibox_docker[@]}" run --rm --init --user "$(id -u):$(id -g)" \
   --shm-size=1g --mount "type=bind,src=$project_root,dst=/app,readonly" \
   --mount "type=bind,src=$python_site,dst=/python-packages,readonly" \
   --mount "type=bind,src=$qa_dir,dst=/qa" --workdir /app/tests/browser \
-  -e MULTIBOX_URL=http://localhost:8000 -e MULTIBOX_QA_DIR=/qa \
+  -e MULTIBOX_URL=http://localhost:8000 -e MULTIBOX_QA_DIR=/qa -e MULTIBOX_LATENCY="${MULTIBOX_LATENCY:-}" \
   "$image" bash /qa/run-container.sh "$@"

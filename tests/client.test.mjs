@@ -67,7 +67,7 @@ test("interpolation follows complete latest roster, shortest rotation and round 
 test("renderer rejects invalid full state rather than displaying a fake world", () => {
   const state = {
     type: "state",
-    v: 1,
+    v: 2,
     tick: 0,
     t: 0,
     round: 1,

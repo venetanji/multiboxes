@@ -1,7 +1,7 @@
 # Browser checks
 
 `npm ci --prefix tests/browser` installs the pinned Playwright 1.56.1 runner.
-Pure helper tests need only `node --test tests/client.test.mjs`.
+Pure helper tests need only `node --test tests/*.test.mjs`.
 
 On Linux, install Python 3.12 dependencies (`pip install -c requirements.lock -e '.[test]'`)
 then run `MULTIBOX_PYTHON=python scripts/browser_check.sh /tmp/multibox-browser`.
@@ -27,6 +27,10 @@ mounted as Linux native dependencies; use native Playwright or a Linux environme
 
 Checks cover real joins, keyboard/jump/blur, touch pointer capture, failed servers,
 URL switching/late old-session events, bounded browser outgoing buffering, and
-100-square desktop/mobile captures. These captures are **visual/interaction**
+100-square desktop/mobile captures. Play-mode checks additionally cover viewport
+fit at 1440×900, 390×844, 844×390 and 480×240; resize, settings overlay, text editing,
+real touch input and restored keyboard focus. An optional `MULTIBOX_LATENCY=1`
+diagnostic samples actual Canvas pixels for input-to-visible-motion; it is skipped
+in ordinary CI and is not evidence about a remote route. These captures are **visual/interaction**
 evidence. Separate 100/150 active-client capacity measurements use
 `scripts/load_test.py`, with the browser suite stopped.

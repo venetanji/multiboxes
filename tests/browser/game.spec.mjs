@@ -1,3 +1,4 @@
+import { FrameDecoder } from "../../src/multibox/static/wire.mjs";
 import { test, expect } from "@playwright/test";
 
 async function connected(page) {
@@ -36,10 +37,16 @@ test("keyboard, supporting jump, blur and touch capture send authoritative input
         sent.push(JSON.parse(frame.payload));
       } catch {}
     });
+    const decoder = new FrameDecoder();
     ws.on("framereceived", (frame) => {
       try {
-        const m = JSON.parse(frame.payload);
-        states.push(m.state || m);
+        if (typeof frame.payload === "string") {
+          const m = JSON.parse(frame.payload);
+          if (m.type === "metadata") decoder.metadata(m);
+        } else {
+          const state = decoder.frame(frame.payload);
+          if (state) states.push(state);
+        }
       } catch {}
     });
   });
@@ -71,6 +78,7 @@ test("keyboard, supporting jump, blur and touch capture send authoritative input
   await page.mouse.move(1, 1);
   await page.mouse.up();
   await expect.poll(() => sent.at(-1)?.right).toBe(false);
+  await page.getByRole("button", { name: "Settings / disconnect" }).click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await expect(page.locator("#empty")).toBeVisible();
 });
@@ -93,6 +101,7 @@ test("URL change closes old session, explicit reconnect replaces identity and ig
   url.port = process.env.MULTIBOX_SECOND_PORT || "8001";
   url.protocol = "ws:";
   url.pathname = "/ws";
+  await page.getByRole("button", { name: "Settings / disconnect" }).click();
   await page.locator("#server").fill(url.href);
   await expect(page.locator("#status")).toContainText("Server changed");
   await expect(page.locator("#empty")).toBeVisible();
@@ -137,6 +146,7 @@ test("focused form clears gameplay keys even if release happens inside the input
   await connected(page);
   await page.keyboard.down("ArrowRight");
   await expect.poll(() => sent.at(-1)?.right).toBe(true);
+  await page.getByRole("button", { name: "Settings / disconnect" }).click();
   await page.locator("#nickname").focus();
   await page.keyboard.up("ArrowRight");
   await expect.poll(() => sent.at(-1)?.right).toBe(false);
@@ -164,8 +174,9 @@ test("crowded desktop and touch mobile show the local square and fit the viewpor
         const ws = new WebSocket(document.getElementById("server").value);
         let seq = 0;
         ws.onopen = () =>
-          ws.send(JSON.stringify({ type: "join", v: 1, nickname: `box ${i}` }));
+          ws.send(JSON.stringify({ type: "join", v: 2, nickname: `box ${i}` }));
         ws.onmessage = (event) => {
+          if (typeof event.data !== "string") return;
           const m = JSON.parse(event.data);
           if (m.type === "welcome") {
             ws.timer = setInterval(() => {
@@ -180,7 +191,7 @@ test("crowded desktop and touch mobile show the local square and fit the viewpor
                     down: seq % 30 < 12,
                   }),
                 );
-            }, 100);
+            }, 50);
           }
         };
         return ws;

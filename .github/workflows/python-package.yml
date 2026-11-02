@@ -27,7 +27,7 @@ jobs:
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-      - run: node --test tests/client.test.mjs
+      - run: node --test tests/*.test.mjs
       - run: python -m pip wheel --no-deps --wheel-dir dist .
       - name: Check wheel includes identical static client
         run: |

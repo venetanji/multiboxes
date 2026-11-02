@@ -110,3 +110,14 @@ curl http://localhost:8000/admin/metrics \
 stay in place and held input is cleared. Player WebSockets have no admin command.
 Use metrics to check tick lag, discarded catch-up, CPU/RSS externally and bandwidth.
 [Load results](load-test.md) give a local baseline, not a campus capacity guarantee.
+
+## Classroom connectivity and container exercise
+
+Use the short [paired networking/troubleshooting guide](classroom-networking.md)
+for selecting a LAN address, four pings, separately checking `/health` on the
+actual HTTP port, and recognizing firewall/client-isolation/bind/TLS problems.
+It also includes an optional local build/run/reconnect exercise using this
+Dockerfile. No scans, blanket firewall disabling or managed campus-rule changes.
+
+Update the static and Python clients/server together: this branch now speaks
+protocol **v2** (JSON controls/roster plus binary complete gameplay frames).

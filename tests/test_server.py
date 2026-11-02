@@ -7,14 +7,30 @@ from starlette.websockets import WebSocketDisconnect
 
 from multibox.game_server import Hub, Peer, create_app
 from multibox.simulation import Config, World
+from multibox.wire import Decoder
 
 
 def join(ws, name="Box"):
-    ws.send_json({"type": "join", "v": 1, "nickname": name})
+    ws.send_json({"type": "join", "v": 2, "nickname": name})
     message = ws.receive_json()
     assert message["type"] == "welcome"
+    ws.decoder = Decoder()
+    message["state"] = next_state(ws)
     assert len(message["state"]["paint"]) == 1500
     return message
+
+
+def next_state(ws):
+    while True:
+        message = ws.receive()
+        if message["type"] == "websocket.close":
+            raise WebSocketDisconnect(message["code"], message.get("reason", ""))
+        if "text" in message:
+            ws.decoder.metadata(json.loads(message["text"]))
+        else:
+            state = ws.decoder.frame(message["bytes"])
+            if state is not None:
+                return state
 
 
 def input_message(seq=0, **buttons):
@@ -36,7 +52,7 @@ def test_join_inputs_disconnect_reconnect_full_snapshot_and_body_cleanup():
             player_id = welcome["you"]
             ws.send_json(input_message(right=True))
             for _ in range(10):
-                state = ws.receive_json()
+                state = next_state(ws)
                 row = next(p for p in state["players"] if p[0] == player_id)
                 if row[-1] == 0:
                     break
@@ -53,7 +69,7 @@ def test_join_inputs_disconnect_reconnect_full_snapshot_and_body_cleanup():
 @pytest.mark.parametrize(
     "bad",
     [
-        {"type": "join", "v": 1, "nickname": "again"},
+        {"type": "join", "v": 2, "nickname": "again"},
         input_message(seq=0, team=2),
         input_message(seq=-1),
         {"type": "reset"},
@@ -67,7 +83,7 @@ def test_duplicate_join_or_invalid_input_closes_without_body_leak(bad):
             ws.send_json(bad)
             with pytest.raises(WebSocketDisconnect) as closed:
                 while True:
-                    ws.receive_json()
+                    next_state(ws)
             assert closed.value.code == 1008
         assert client.get("/health").json()["players"] == 0
         assert len(app.state.hub.world.space.bodies) == 0
@@ -81,7 +97,7 @@ def test_replayed_sequence_rejected():
             ws.send_json(input_message(seq=2))
             with pytest.raises(WebSocketDisconnect):
                 while True:
-                    ws.receive_json()
+                    next_state(ws)
 
 
 def test_origin_is_explicit_and_full_world_rejects_extra_connection():
@@ -123,11 +139,22 @@ def test_teacher_controls_disabled_or_require_private_token():
 class FakeSocket:
     def __init__(self, slow=False):
         self.slow, self.sent, self.closed = slow, [], False
+        self.decoder = Decoder()
+        self.states = []
 
     async def send_text(self, data):
         if self.slow:
             await asyncio.Event().wait()
         self.sent.append(json.loads(data))
+        self.decoder.metadata(json.loads(data))
+
+    async def send_bytes(self, data):
+        if self.slow:
+            await asyncio.Event().wait()
+        self.sent.append(data)
+        state = self.decoder.frame(data)
+        if state is not None:
+            self.states.append(state)
 
     async def close(self, **kwargs):
         self.closed = True
@@ -149,9 +176,9 @@ async def test_slow_sender_does_not_block_world_and_queues_hold_latest_complete_
         assert hub.world.tick >= 10
         assert slow.ws.closed
         assert len(hub.world.players) == 1
-        assert len(fast.ws.sent) >= 3
+        assert len(fast.ws.states) >= 3
         assert hub.metrics()["queue_max"] == 1
-        assert all("paint" in state and "players" in state for state in fast.ws.sent)
+        assert all("paint" in state and "players" in state for state in fast.ws.states)
         for _ in range(100):
             hub.publish()
         assert fast.queue.qsize() == 1
@@ -186,7 +213,7 @@ def test_join_timeout_and_oversized_binary_frames_release_reservations():
                 else:
                     ws.send_text(frame)
                 with pytest.raises(WebSocketDisconnect):
-                    ws.receive_json()
+                    next_state(ws)
         assert not app.state.hub.peers
         assert not app.state.hub.world.players
 
@@ -205,7 +232,10 @@ def test_shared_serialization_is_one_object_and_newest_state_is_complete():
     a.player_id = None
     hub.world.reset_round(start=True)
     hub.publish()
-    state = json.loads(b.queue.get_nowait())
+    packet = b.queue.get_nowait()
+    decoder = Decoder()
+    decoder.metadata(json.loads(packet.metadata))
+    state = decoder.frame(packet.frame)
     assert state["paint"] == "0" * 1500
     assert [p[0] for p in state["players"]] == [b.player_id]
 
@@ -231,3 +261,60 @@ def test_malformed_origin_rejected_without_server_error():
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect("/ws", headers={"origin": "http://[invalid"}):
                 pass
+
+
+@pytest.mark.parametrize("block_on", ["metadata", "frame"])
+async def test_replaced_states_carry_their_own_reliable_roster(block_on):
+    class GatedSocket(FakeSocket):
+        def __init__(self):
+            super().__init__()
+            self.entered = asyncio.Event()
+            self.release = asyncio.Event()
+            self.blocked = False
+
+        async def gate(self, kind):
+            if kind == block_on and not self.blocked:
+                self.blocked = True
+                self.entered.set()
+                await self.release.wait()
+
+        async def send_text(self, data):
+            await self.gate("metadata")
+            await super().send_text(data)
+
+        async def send_bytes(self, data):
+            await self.gate("frame")
+            await super().send_bytes(data)
+
+    hub = Hub(World())
+    owner = hub.world.add_player("owner", now=0)
+    a = hub.world.add_player("a", now=0)
+    peer = Peer(GatedSocket())
+    peer.player_id = owner.id
+    hub.peers.add(peer)
+    hub.publish()
+    sender = asyncio.create_task(hub.send(peer))
+    try:
+        await asyncio.wait_for(peer.ws.entered.wait(), 1)
+        hub.world.remove_player(a.id)
+        b = hub.world.add_player("b", now=1)
+        hub.world.step(1)
+        hub.publish()
+        hub.world.remove_player(b.id)
+        c = hub.world.add_player("c", now=2)
+        hub.world.step(2)
+        hub.publish()
+        assert peer.queue.qsize() == 1
+        peer.ws.release.set()
+        for _ in range(30):
+            if len(peer.ws.states) >= 2:
+                break
+            await asyncio.sleep(0.01)
+        assert [[p[0] for p in state["players"]] for state in peer.ws.states] == [
+            [owner.id, a.id],
+            [owner.id, c.id],
+        ]
+        assert [m["revision"] for m in peer.ws.sent if isinstance(m, dict)] == ["1", "3"]
+    finally:
+        sender.cancel()
+        await asyncio.gather(sender, return_exceptions=True)

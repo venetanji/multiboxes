@@ -32,6 +32,12 @@ class Config:
     intermission_seconds: float = 10
 
     def __post_init__(self):
+        if (
+            self.round_seconds > (2**32 - 1) / 1000
+            or self.intermission_seconds > (2**32 - 1) / 1000
+            or self.max_speed_y > 4095.875
+        ):
+            raise ValueError("round/intermission or vertical speed exceeds wire bounds")
         if not (1 <= self.max_players <= 200):
             raise ValueError("max_players must be 1..200")
         if self.width != 1200 or self.height != 720 or self.player_size != 24:
@@ -136,6 +142,8 @@ class World:
     def add_player(self, nickname: str, *, now: float) -> PlayerState:
         if len(self.players) >= self.config.max_players:
             raise ValueError("world full")
+        if self.next_id > 2**64 - 1:
+            raise ValueError("identity counter exhausted; restart the world")
         spawn = self._spawn()
         if not self.players and self.phase == "waiting" and self.autostart:
             self.reset_round(start=True)

@@ -27,7 +27,7 @@ def decode(raw: str) -> dict:
 def parse_join(message: dict) -> str:
     if set(message) != {"type", "v", "nickname"} or message["type"] != "join":
         raise ProtocolError("expected one join message")
-    if type(message["v"]) is not int or message["v"] != 1:
+    if type(message["v"]) is not int or message["v"] != 2:
         raise ProtocolError("unsupported protocol version")
     name = message["nickname"]
     if not isinstance(name, str) or not 1 <= len(name.strip()) <= 24 or not name.isprintable():

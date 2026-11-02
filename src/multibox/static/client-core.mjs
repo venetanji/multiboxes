@@ -69,7 +69,7 @@ export function validState(s) {
   if (
     !s ||
     s.type !== "state" ||
-    s.v !== 1 ||
+    s.v !== 2 ||
     !Number.isInteger(s.tick) ||
     !Number.isFinite(s.t) ||
     !Number.isInteger(s.round) ||
@@ -107,7 +107,7 @@ export function validState(s) {
       !Array.isArray(row) ||
       row.length !== 9 ||
       typeof row[0] !== "string" ||
-      row[0].length > 32 ||
+      row[0].length > 64 ||
       ids.has(row[0]) ||
       typeof row[1] !== "string" ||
       row[1].length > 48 ||
