@@ -1,184 +1,114 @@
-# Multiboxes - Educational Multiplayer Game
+# Multiboxes · Black / White
 
-A simple multiplayer physics game demonstrating key programming concepts for students:
+A multiplayer physics and territory-painting starter for a two-hour networking
+class. Python/Pymunk owns the world; browser Canvas and optional Pygame clients
+render the same state. No accounts, database, build tool or JavaScript framework.
 
-- **Asyncio**: Concurrent programming with Python
-- **OSC**: Open Sound Control for network communication  
-- **PyMunk**: 2D physics simulation
-- **Pygame**: Game graphics and input handling
-- **Zeroconf**: Automatic network service discovery
-- **Python Packaging**: How to create installable Python packages
+Two balanced teams compete for painted coverage. Move left/right, **jump with a
+fresh up press**, land on the floor or another square to recharge, then descend to
+paint automatically. **Down adds downward force**. Teammates can stack and boost
+each other. Your square always has a bright pink outline and **YOU** label.
 
-## What This Project Teaches
+## Run locally
 
-### 1. Asyncio (Asynchronous Programming)
-- Running multiple tasks concurrently (game loop, network, graphics)
-- Using `async`/`await` keywords
-- Managing event loops and coroutines
-- Non-blocking I/O operations
+Python **3.11 or 3.12** is tested. Create and activate a virtual environment:
 
-### 2. Network Programming
-- UDP communication between client and server
-- OSC (Open Sound Control) message format
-- Real-time multiplayer synchronization
-- Automatic service discovery with Zeroconf
-
-### 3. Game Development
-- Game loop architecture (update → draw → repeat)
-- Physics simulation with PyMunk
-- Player input handling
-- Real-time graphics with Pygame
-
-### 4. Python Packaging
-- Creating installable packages with `pyproject.toml`
-- Module structure and imports
-- Development vs. production dependencies
-
-## Project Structure
-
-```
-multiboxes/
-├── src/multibox/           # Main package code
-│   ├── game_server.py      # Server that runs physics and coordinates players
-│   ├── game_client.py      # Client that handles graphics and input
-│   ├── player.py           # Player class definition
-│   └── avahi_utils.py      # Network service discovery utilities
-├── tests/                  # Test files
-├── requirements.txt        # Project dependencies
-├── pyproject.toml         # Package configuration
-└── README.md              # This file
-```
-
-## How to Run
-
-### 1. Set up the environment
-```bash
-# Create virtual environment with uv
-uv venv
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/Mac
-
-# Install dependencies
-uv pip install -r requirements.txt
-
-# Install the package in development mode
-uv pip install -e .
-```
-
-### 2. Start the server
-```bash
+```sh
+python -m venv .venv
+# macOS/Linux:
+source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install -c requirements.lock -e .
 python -m multibox.game_server
 ```
 
-The server will:
-- Create a physics world with walls
-- Listen for player connections
-- Run the game loop at 60 FPS
-- Broadcast player positions to all clients
+Open **http://localhost:8000** in two tabs, choose nicknames and click **Connect**.
+The client defaults to the same origin's `/ws`. Arrows or WASD work; Space also
+jumps. The on-screen buttons support touch and keyboard activation. Input clears
+on blur, hidden tabs, form focus and disconnect; stale input also expires at the
+server after 0.5 seconds. Reconnect gives a new temporary identity and full state.
 
-### 3. Start clients (in separate terminals)
-```bash
-python -m multibox.game_client
+The first player starts a three-minute round; results show for ten seconds, then a
+new round begins. Coverage percentages include neutral grey area, so BLACK and
+WHITE need not sum to 100%. Round start/reset controls require a private teacher
+token; they are absent from the student interface.
+
+The launcher still supports `python launcher.py server`, `client` and `test`.
+For the native client, first install `python -m pip install -c requirements.lock -e '.[native]'`,
+then run `python -m multibox.game_client --server ws://localhost:8000/ws --nickname Box`.
+
+## Shared classroom server / optional Pages client
+
+```sh
+python -m multibox.game_server --host 0.0.0.0 --port 8000 --max-players 160 --round-seconds 180
 ```
 
-Each client will:
-- Automatically discover the server using Zeroconf
-- Connect and create a player
-- Display the game world
-- Send keyboard input to the server
+Students can use the server's HTTP client on an allowed campus network, or the
+**identical static client** can later be hosted on GitHub Pages and configured
+with a full server URL, including scheme, hostname/IP, port and path. A URL query
+such as `?server=wss%3A%2F%2Fgame.example.edu%2Fws` pre-fills it, but never connects
+automatically. Editing the address disconnects the previous session.
 
-### 4. Play the game!
-- **Arrow keys**: Move your player around
-- **Q/E**: Rotate (basic implementation)
-- **ESC** or close window: Quit
+**HTTPS Pages requires WSS with a valid certificate/domain.** A university IP does
+not imply TLS. For reliable localhost exercises, use the locally served HTTP
+client. Do not bypass mixed-content, certificate or local-network permission
+checks. Pages serves static files only; Python runs separately. The manual Pages
+workflow is prepared but no deployment is automatic.
 
-## Key Concepts Explained
+See [deployment and Docker instructions](docs/deployment.md), including explicit
+allowed origins, one-process operation, TLS/reverse-proxy preparation and teacher
+controls. No infrastructure or Pages settings are changed by installing this repo.
 
-### Server Architecture
-The server demonstrates several important patterns:
+## Read / change / test
 
-1. **Global State Management**: Player positions and physics bodies
-2. **Event-Driven Programming**: OSC message handlers
-3. **Physics Simulation**: PyMunk space, bodies, and forces
-4. **Network Broadcasting**: Sending updates to all connected clients
+- [120-minute tutorial](STUDY_GUIDE.md): run the supplied starter, inspect messages,
+  change a rule, test server authority, reconnect, then join the shared world.
+- [`simulation.py`](src/multibox/simulation.py): readable fixed-step Pymunk world
+  and `Config` tunables: gravity, acceleration, jump impulse, paint threshold,
+  round length and bounded paint-cell size.
+- [`game_server.py`](src/multibox/game_server.py): HTTP/WebSocket lifecycle,
+  fixed-deadline scheduler, bounded latest-state queues and authenticated metrics.
+- [`protocol.py`](src/multibox/protocol.py) / [protocol reference](docs/protocol.md):
+  strict input validation and complete authoritative snapshots.
+- [`static/`](src/multibox/static): plain HTML/CSS/Canvas, interpolation, URL settings,
+  keyboard/touch input and local-player indication. These files are also in wheels.
+- [`game_client.py`](src/multibox/game_client.py): optional native Pygame renderer
+  using the same WebSocket world. Legacy `avahi_utils.py` is an optional historical
+  OSC/Zeroconf helper; it is not imported by the server or browser.
 
-### Client Architecture
-The client shows how to integrate different systems:
+```sh
+python -m pip install -c requirements.lock -e '.[test,native]'
+python -m pytest -q
+ruff check src tests scripts
+node --test tests/client.test.mjs
+npm ci --prefix tests/browser
+# Linux + Docker + a Python 3.12 environment; non-root Chromium with sandbox checks:
+MULTIBOX_PYTHON=python scripts/browser_check.sh /tmp/multibox-browser
+# Active simulated players, not idle sockets (each starts its own local server):
+python scripts/load_test.py --clients 100 --seconds 120 --slow 5 --output /tmp/load-100.json
+python scripts/load_test.py --clients 150 --seconds 120 --slow 5 --output /tmp/load-150.json
+```
 
-1. **Async Task Coordination**: Multiple concurrent coroutines
-2. **Event Loop Integration**: Bridging Pygame and asyncio
-3. **Network Client Pattern**: Receiving server updates
-4. **Real-time Rendering**: 60 FPS graphics loop
+[Measured load results and limitations](docs/load-test.md) distinguish loopback
+capacity, browser checks and the still-required campus Wi-Fi/device rehearsal.
+Physics targets 60 Hz and full state snapshots 20 Hz; these are targets, not a
+promise for arbitrary hardware. Snapshot JSON is serialized once, shared across
+bounded one-state queues, and each client sends independently with a timeout.
+One slow client cannot hold up the world. No database writes occur in physics;
+saving final round results is a next-week exercise.
 
-### Network Communication
-The project uses OSC messages for simplicity:
+## OSC, UDP and WebSockets
 
-- `/connect` - Client joins the game
-- `/update_velocity` - Client sends movement input
-- `/update_position` - Server broadcasts player positions
+The original project already had a headless Pymunk server with moving bodies,
+gravity, walls and collisions, plus Pygame rendering. This adaptation keeps those
+ideas and replaces its unbounded per-player/per-client executor sends with one
+batched state protocol. Movement now follows held input at fixed physics steps,
+rather than force per incoming packet. Native clients remain useful without a
+separate simulation.
 
-### Service Discovery
-Instead of hardcoding IP addresses, the project uses Zeroconf:
-
-1. Server registers itself as a network service
-2. Clients automatically discover available servers
-3. No manual network configuration needed
-
-## Learning Exercises
-
-Try these modifications to learn more:
-
-### Beginner
-1. Change player colors or sizes
-2. Modify movement speed or physics properties
-3. Add sound effects using pygame.mixer
-4. Display player names or scores
-
-### Intermediate  
-1. Add collision detection between players
-2. Implement power-ups or collectible items
-3. Add different game modes (team vs team)
-4. Save and load game state
-
-### Advanced
-1. Add interpolation for smoother movement
-2. Implement client-side prediction
-3. Add lag compensation techniques
-4. Create a matchmaking system
-
-## Common Issues
-
-### "No server found"
-- Make sure the server is running first
-- Check that both client and server are on the same network
-- Firewall might be blocking UDP traffic
-
-### Import errors
-- Make sure you activated the virtual environment
-- Run `uv pip install -e .` to install in development mode
-- Check that all dependencies are installed
-
-### Game runs slowly
-- Physics calculations can be CPU intensive
-- Try reducing the number of connected clients
-- Lower the FPS in the game loop if needed
-
-## Dependencies Explained
-
-- **pygame**: Graphics, input, and game loop
-- **pymunk**: 2D physics simulation engine
-- **python-osc**: OSC message protocol implementation
-- **zeroconf**: Network service discovery (like Bonjour/Avahi)
-- **pytest**: Testing framework
-- **asyncio**: Built into Python, provides async/await
-
-## Next Steps
-
-This project provides a foundation for learning:
-
-1. **Game Development**: Add gameplay mechanics, scoring, levels
-2. **Network Programming**: Study latency, packet loss, security
-3. **Concurrent Programming**: Learn about threading vs. asyncio
-4. **Software Architecture**: Design patterns for games and servers
-
-The code is heavily commented to help students understand each concept. Read through the comments and experiment with changes!
+OSC is a message format often used over UDP. UDP has no connection or guaranteed
+ordering/delivery; the old discovery/listener assumptions do not map to a browser.
+WebSockets provide bidirectional messages over TCP (WSS adds TLS). Reliable delivery
+also means slow readers need explicit backpressure handling. Full snapshots make
+queue replacement and reconnect safe; students do not have to write a networking
+engine to change the game.

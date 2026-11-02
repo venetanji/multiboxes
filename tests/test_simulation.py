@@ -223,3 +223,14 @@ def test_round_reset_does_not_turn_held_jump_into_a_fresh_press():
     world.step(2.1)
     assert world.jumps == 1
     assert abs(player.body.velocity.y) < 2
+
+
+def test_teacher_reset_waits_for_teacher_even_if_everyone_leaves():
+    world = World()
+    player = world.add_player("first", now=0)
+    world.reset_round(start=False)
+    world.remove_player(player.id)
+    world.add_player("second", now=1)
+    assert world.phase == "waiting"
+    world.reset_round(start=True)
+    assert world.phase == "playing"

@@ -95,6 +95,7 @@ class World:
         self.round = 0
         self.remaining = self.config.round_seconds
         self.phase = "waiting"
+        self.autostart = True
         self.intermission = 0.0
         self.paint = bytearray(b"0" * (self.columns * self.rows))
         self.counts = [len(self.paint), 0, 0]
@@ -136,7 +137,7 @@ class World:
         if len(self.players) >= self.config.max_players:
             raise ValueError("world full")
         spawn = self._spawn()
-        if not self.players and self.phase == "waiting":
+        if not self.players and self.phase == "waiting" and self.autostart:
             self.reset_round(start=True)
         black = sum(p.team == 1 for p in self.players.values())
         team = 1 if black <= len(self.players) - black else 2
@@ -259,6 +260,7 @@ class World:
                     self.paint_writes += 1
 
     def reset_round(self, *, start: bool):
+        self.autostart = False  # An explicit teacher reset must stay waiting across all rejoins.
         self.round += 1
         self.paint[:] = b"0" * len(self.paint)
         self.counts = [len(self.paint), 0, 0]
