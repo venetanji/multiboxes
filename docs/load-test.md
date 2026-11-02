@@ -105,11 +105,14 @@ frames, paint padding/max sizes, slot reuse, stale frames and reliable metadata
 when intermediate queued states are replaced. Native clients use real local
 WebSocket connections and SDL dummy rendering.
 
-13 sandboxed Chromium checks cover keyboard/touch, blur/text focus, settings and
+The original 13 sandboxed Chromium checks cover keyboard/touch, blur/text focus, settings and
 URL switching, reconnect/disconnect, outgoing backpressure, 100-square desktop/mobile
 views and viewport-only play at 1440×900, 390×844, 844×390 and 480×240 including resize.
 Actual screenshots were inspected; namespace and seccomp sandbox layers pass.
 These are visual/input checks, not 100 physical-device rendering benchmarks.
+The subsequent [UI review](ui-review.md) records expanded viewport, multi-pointer,
+setup/settings/recovery checks and local render-callback timings. Physics and wire
+format are unchanged by that polish; the capacity runs above remain the baseline.
 
 The original overflowing page/key-focus problem was reproduced and fixed. A small
 exploratory local Canvas-pixel probe before the layout fix observed 124.5–159.9ms

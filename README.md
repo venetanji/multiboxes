@@ -24,11 +24,19 @@ python -m multibox.game_server
 
 Open **http://localhost:8000** in two tabs, choose nicknames and click **Connect**.
 The client defaults to the same origin's `/ws`. Arrows or WASD work; Space also
-jumps. The on-screen buttons support touch and keyboard activation. Connected play fills
-the viewport without document scrolling; **Settings** opens connection settings
-and Disconnect, and **Resume game** restores canvas focus. The shared landscape
-world keeps its aspect ratio, so portrait/short screens can have letterboxing. Input clears
-on blur, hidden tabs, form focus and disconnect; stale input also expires at the
+jumps. Touch devices show an arrow cross: up/jump above left/right, down below. Hold
+movement while tapping jump or down; multiple fingers work together. Portrait uses
+the full available width for the framed arena, with the cross below. Short landscape
+places the cross beside the arena. Desktop play hides the touch controls.
+
+Connected play fills the viewport without document scrolling. The square woven
+border sits outside all four sides of the unchanged 1200×720 world, which keeps
+its 5:3 aspect ratio. Players cannot overlap the decoration. The compact **Settings**
+icon opens connection settings and Disconnect; **Resume game**
+or Escape restores canvas focus. The shared game continues while settings are open.
+Name changes take effect on reconnect. Pending connections can be canceled, and
+connection errors return to setup with a retry path. Input clears on resize/rotation,
+blur, hidden tabs, form focus and disconnect; stale input also expires at the
 server after 0.5 seconds. Reconnect gives a new temporary identity and full state.
 
 The first player starts a three-minute round; results show for ten seconds, then a

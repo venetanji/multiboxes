@@ -1,5 +1,6 @@
 import { FrameDecoder } from "../../src/multibox/static/wire.mjs";
 import { test, expect } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 
 async function connected(page) {
   await page.goto("/");
@@ -27,8 +28,11 @@ test("unavailable server never reports a successful join", async ({ page }) => {
 });
 
 test("keyboard, supporting jump, blur and touch capture send authoritative inputs", async ({
-  page,
+  browser,
+  baseURL,
 }) => {
+  const context = await browser.newContext({ baseURL, hasTouch: true });
+  const page = await context.newPage();
   const sent = [],
     states = [];
   page.on("websocket", (ws) => {
@@ -81,6 +85,7 @@ test("keyboard, supporting jump, blur and touch capture send authoritative input
   await page.getByRole("button", { name: "Settings / disconnect" }).click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await expect(page.locator("#empty")).toBeVisible();
+  await context.close();
 });
 
 test("URL change closes old session, explicit reconnect replaces identity and ignores late events", async ({
@@ -165,6 +170,17 @@ test("crowded desktop and touch mobile show the local square and fit the viewpor
       hasTouch,
       isMobile: hasTouch,
     });
+    await context.addInitScript(() => {
+      const original = requestAnimationFrame;
+      window.renderSamples = [];
+      window.requestAnimationFrame = (callback) =>
+        original((time) => {
+          const start = performance.now();
+          callback(time);
+          window.renderSamples.push(performance.now() - start);
+          if (window.renderSamples.length > 600) window.renderSamples.shift();
+        });
+    });
     const page = await context.newPage();
     await page.goto(baseURL);
     await page.getByRole("button", { name: "Connect", exact: true }).click();
@@ -201,6 +217,9 @@ test("crowded desktop and touch mobile show the local square and fit the viewpor
       "100 players connected",
       { timeout: 15000 },
     );
+    await page.evaluate(() => {
+      window.renderSamples.length = 0;
+    });
     await page.waitForTimeout(3000);
     expect(
       await page.evaluate(
@@ -216,6 +235,24 @@ test("crowded desktop and touch mobile show the local square and fit the viewpor
         path: `${process.env.MULTIBOX_QA_DIR}/${name}.png`,
         fullPage: true,
       });
+    if (process.env.MULTIBOX_QA_DIR) {
+      const samples = await page.evaluate(() => window.renderSamples);
+      samples.sort((a, b) => a - b);
+      await writeFile(
+        `${process.env.MULTIBOX_QA_DIR}/${name}-render.json`,
+        JSON.stringify(
+          {
+            players: 100,
+            samples: samples.length,
+            p50_ms: samples[Math.floor(samples.length * 0.5)],
+            p95_ms: samples[Math.floor(samples.length * 0.95)],
+            max_ms: samples.at(-1),
+          },
+          null,
+          2,
+        ),
+      );
+    }
     await page.evaluate(() =>
       window.bots.forEach((ws) => {
         clearInterval(ws.timer);

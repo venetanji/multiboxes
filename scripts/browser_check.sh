@@ -28,8 +28,10 @@ python3 -m multibox.game_server --port 8000 > /qa/server.log 2>&1 &
 server_one=$!
 MULTIBOX_ALLOWED_ORIGINS=http://localhost:8000 python3 -m multibox.game_server --port 8001 > /qa/server-second.log 2>&1 &
 server_two=$!
-trap 'kill "$server_one" "$server_two" 2>/dev/null || true' EXIT
-node --input-type=module -e 'for(let i=0;i<100;i++){try{if((await fetch("http://localhost:8000/health")).ok&&(await fetch("http://localhost:8001/health")).ok)process.exit(0);}catch{}await new Promise(r=>setTimeout(r,100));}process.exit(1);'
+MULTIBOX_TEACHER_TOKEN=browser-qa-only python3 -m multibox.game_server --port 8002 --round-seconds 1 > /qa/server-rounds.log 2>&1 &
+server_rounds=$!
+trap 'kill "$server_one" "$server_two" "$server_rounds" 2>/dev/null || true' EXIT
+node --input-type=module -e 'for(let i=0;i<100;i++){try{if((await Promise.all([8000,8001,8002].map(port=>fetch(`http://localhost:${port}/health`)))).every(r=>r.ok))process.exit(0);}catch{}await new Promise(r=>setTimeout(r,100));}process.exit(1);'
 node node_modules/playwright/cli.js test "$@"
 INNER
 exec "${multibox_docker[@]}" run --rm --init --user "$(id -u):$(id -g)" \

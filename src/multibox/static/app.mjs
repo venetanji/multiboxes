@@ -1,4 +1,5 @@
 import { FrameDecoder } from "./wire.mjs";
+import { createBoundary } from "./boundary.mjs";
 import {
   serverUrl,
   HeldInput,
@@ -13,6 +14,8 @@ const paintCanvas = document.createElement("canvas");
 paintCanvas.width = 1200;
 paintCanvas.height = 720;
 const paintCtx = paintCanvas.getContext("2d");
+const boundaryCanvas = createBoundary();
+$("boundary").getContext("2d").drawImage(boundaryCanvas, 0, 0);
 const input = new HeldInput();
 const setupParent = $("setup").parentNode;
 function restoreSetup() {
@@ -36,7 +39,10 @@ $("open-settings").addEventListener("click", () => {
   $("resume").focus();
 });
 $("resume").addEventListener("click", () => $("settings").close());
-$("settings").addEventListener("close", restoreSetup);
+$("settings").addEventListener("close", () => {
+  // A queued close must not move a newly reopened form out of the dialog.
+  if (!$("settings").open) restoreSetup();
+});
 const colours = ["#a6ada2", "#20231f", "#fafaf5"];
 const keyMap = {
   ArrowLeft: "left",
@@ -64,15 +70,27 @@ function status(message, error = false) {
   if ($("status").textContent !== message) $("status").textContent = message;
   $("status").dataset.error = String(error);
 }
+function roundStatus(message) {
+  // Repeated snapshots must not re-announce unchanged text to screen readers.
+  if ($("round-status").textContent !== message)
+    $("round-status").textContent = message;
+}
 function sendInput() {
+  const buttons = input.buttons();
+  document
+    .querySelectorAll("[data-control]")
+    .forEach((button) =>
+      button.setAttribute(
+        "aria-pressed",
+        String(buttons[button.dataset.control]),
+      ),
+    );
   if (!you || socket?.readyState !== WebSocket.OPEN) return;
   if (socket.bufferedAmount > 2048) {
     disconnect("Connection is too slow. Reconnect to try again.", true);
     return;
   }
-  socket.send(
-    JSON.stringify({ type: "input", seq: sequence++, ...input.buttons() }),
-  );
+  socket.send(JSON.stringify({ type: "input", seq: sequence++, ...buttons }));
 }
 function clearInput() {
   input.clear();
@@ -116,11 +134,26 @@ function disconnect(
   if (previous) previous.close(1000, "client disconnect");
   $("disconnect").hidden = true;
   $("connect").textContent = "Connect";
+  $("connect").disabled = false;
+  $("connection").setAttribute("aria-busy", "false");
+  $("disconnect").textContent = "Disconnect";
+  $("nickname-help").textContent =
+    "Pick a name. Your team is assigned when you join.";
   $("empty").hidden = false;
+  $("empty-title").textContent = error
+    ? "Let’s get you back in."
+    : "Make your mark.";
+  $("empty-message").textContent = error
+    ? "Check the connection message above, then connect again."
+    : "Connect, find your square, and jump. Every descent paints for your team.";
   $("you").textContent = "Look for the pink outline + YOU";
   $("population").textContent = "0 players connected";
   $("black-score").textContent = $("white-score").textContent = "—";
   $("black-bar").style.width = $("white-bar").style.width = "0%";
+  $("round-label").textContent = "ROUND";
+  $("timer").textContent = "—";
+  $("round-status").hidden = true;
+  document.querySelector("main").scrollTop = 0;
   status(message, error);
 }
 function acceptState(state) {
@@ -162,9 +195,13 @@ function acceptState(state) {
         ? "A draw"
         : `${state.coverage[1] > state.coverage[2] ? "BLACK" : "WHITE"} wins`;
     status(`${winner}. New round in ${seconds}s. Stack, jump and repaint.`);
+    roundStatus(`${winner}. Next round soon.`);
   } else if (state.phase === "waiting")
     status("Waiting for the teacher to start a round.");
   else status(`Connected · ${team} team. Your square has the pink outline.`);
+  if (state.phase === "waiting")
+    roundStatus("Waiting for the teacher to start a round.");
+  $("round-status").hidden = state.phase === "playing";
 }
 function connect(event) {
   event.preventDefault();
@@ -186,13 +223,25 @@ function connect(event) {
     localStorage.setItem("multibox-server", url);
     localStorage.setItem("multibox-nickname", name);
   } catch {}
-  const current = new WebSocket(url);
+  let current;
+  try {
+    current = new WebSocket(url);
+  } catch {
+    disconnect(
+      "Your browser blocked this connection. Check the address and network permission, then connect again.",
+      true,
+    );
+    return;
+  }
   current.binaryType = "arraybuffer";
   const decoder = new FrameDecoder();
   let joined = false;
   socket = current;
   sequence = 0;
   $("connect").textContent = "Connecting…";
+  $("connect").disabled = true;
+  $("connection").setAttribute("aria-busy", "true");
+  $("disconnect").textContent = "Cancel connection";
   $("disconnect").hidden = false;
   timeout = setTimeout(() => {
     if (socket === current)
@@ -240,6 +289,11 @@ function connect(event) {
           spawnedAt = performance.now();
           $("empty").hidden = true;
           $("connect").textContent = "Reconnect";
+          $("connect").disabled = false;
+          $("connection").setAttribute("aria-busy", "false");
+          $("disconnect").textContent = "Disconnect";
+          $("nickname-help").textContent =
+            "Name changes apply when you reconnect. A new team may be assigned.";
           canvas.focus({ preventScroll: true });
           heartbeat = setInterval(sendInput, 50);
           sendInput();
@@ -314,6 +368,8 @@ for (const type of ["keydown", "keyup"])
     if (input.set(event.code, button, type === "keydown")) sendInput();
   });
 window.addEventListener("blur", clearInput);
+window.addEventListener("resize", clearInput);
+window.visualViewport?.addEventListener("resize", clearInput);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) clearInput();
 });
@@ -324,11 +380,20 @@ window.addEventListener("pagehide", () => disconnect());
 for (const button of document.querySelectorAll("[data-control]")) {
   button.setAttribute("aria-pressed", "false");
   button.addEventListener("pointerdown", (event) => {
+    if (
+      !you ||
+      $("settings").open ||
+      (event.pointerType === "mouse" && event.button !== 0)
+    )
+      return;
     event.preventDefault();
     button.setPointerCapture(event.pointerId);
     if (input.set(`pointer-${event.pointerId}`, button.dataset.control, true))
       sendInput();
-    button.setAttribute("aria-pressed", "true");
+    button.setAttribute(
+      "aria-pressed",
+      String(input.buttons()[button.dataset.control]),
+    );
   });
   for (const type of ["pointerup", "pointercancel", "lostpointercapture"])
     button.addEventListener(type, (event) => {
@@ -336,7 +401,10 @@ for (const button of document.querySelectorAll("[data-control]")) {
         input.set(`pointer-${event.pointerId}`, button.dataset.control, false)
       )
         sendInput();
-      button.setAttribute("aria-pressed", "false");
+      button.setAttribute(
+        "aria-pressed",
+        String(input.buttons()[button.dataset.control]),
+      );
     });
   // Keyboard and assistive-technology activation of the visible controls.
   button.addEventListener("keydown", (event) => {
@@ -351,7 +419,10 @@ for (const button of document.querySelectorAll("[data-control]")) {
       )
     )
       sendInput();
-    button.setAttribute("aria-pressed", "true");
+    button.setAttribute(
+      "aria-pressed",
+      String(input.buttons()[button.dataset.control]),
+    );
   });
   button.addEventListener("keyup", (event) => {
     if (!["Space", "Enter"].includes(event.code)) return;
@@ -364,7 +435,10 @@ for (const button of document.querySelectorAll("[data-control]")) {
       )
     )
       sendInput();
-    button.setAttribute("aria-pressed", "false");
+    button.setAttribute(
+      "aria-pressed",
+      String(input.buttons()[button.dataset.control]),
+    );
   });
   button.addEventListener("blur", clearInput);
   button.addEventListener("contextmenu", (event) => event.preventDefault());

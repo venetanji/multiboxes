@@ -38,6 +38,9 @@ threshold. There is no paint button or mass toggle.
 During play, **Settings** opens connection controls and **Resume game** returns
 keyboard focus to the arena. The document does not scroll while playing; fields
 in the overlay keep normal text-editing keys.
+On a phone, use the arrow cross: up to jump, left/right to move and down to fall
+faster. Hold one direction while tapping another. The arena fills the available
+portrait width; in short landscape the cross moves beside it. Rotating or resizing releases held controls; press again to continue.
 
 Open a second tab. Confirm different temporary identities and balanced teams. The
 pink outline and YOU label belong only to the square controlled by that tab.

@@ -1,0 +1,282 @@
+[
+  {
+    "name": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "canvas": {
+      "x": 102.8125,
+      "y": 90.6875,
+      "width": 1234.375,
+      "height": 740.625
+    },
+    "controls": [
+      {
+        "control": "left",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "control": "right",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "control": "down",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "control": "jump",
+        "width": 0,
+        "height": 0
+      }
+    ]
+  },
+  {
+    "name": "short",
+    "viewport": {
+      "width": 1000,
+      "height": 480
+    },
+    "canvas": {
+      "x": 210.9375,
+      "y": 77.5625,
+      "width": 578.125,
+      "height": 346.875
+    },
+    "controls": [
+      {
+        "control": "left",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "control": "right",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "control": "down",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "control": "jump",
+        "width": 0,
+        "height": 0
+      }
+    ]
+  },
+  {
+    "name": "portrait",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "canvas": {
+      "x": 7.5,
+      "y": 218,
+      "width": 375,
+      "height": 225
+    },
+    "controls": [
+      {
+        "control": "left",
+        "width": 60,
+        "height": 60
+      },
+      {
+        "control": "right",
+        "width": 60,
+        "height": 60
+      },
+      {
+        "control": "down",
+        "width": 60,
+        "height": 60
+      },
+      {
+        "control": "jump",
+        "width": 60,
+        "height": 60
+      }
+    ]
+  },
+  {
+    "name": "small-phone",
+    "viewport": {
+      "width": 320,
+      "height": 568
+    },
+    "canvas": {
+      "x": 6.140625,
+      "y": 116.671875,
+      "width": 307.6875,
+      "height": 184.609375
+    },
+    "controls": [
+      {
+        "control": "left",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "right",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "down",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "jump",
+        "width": 48,
+        "height": 48
+      }
+    ]
+  },
+  {
+    "name": "short-phone",
+    "viewport": {
+      "width": 320,
+      "height": 480
+    },
+    "canvas": {
+      "x": 6.140625,
+      "y": 72.671875,
+      "width": 307.6875,
+      "height": 184.609375
+    },
+    "controls": [
+      {
+        "control": "left",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "right",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "down",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "jump",
+        "width": 48,
+        "height": 48
+      }
+    ]
+  },
+  {
+    "name": "landscape",
+    "viewport": {
+      "width": 844,
+      "height": 390
+    },
+    "canvas": {
+      "x": 276.0625,
+      "y": 53.4375,
+      "width": 471.875,
+      "height": 283.125
+    },
+    "controls": [
+      {
+        "control": "left",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "right",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "down",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "jump",
+        "width": 48,
+        "height": 48
+      }
+    ]
+  },
+  {
+    "name": "small-landscape",
+    "viewport": {
+      "width": 568,
+      "height": 320
+    },
+    "canvas": {
+      "x": 191.96875,
+      "y": 50.28125,
+      "width": 364.0625,
+      "height": 218.4375
+    },
+    "controls": [
+      {
+        "control": "left",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "right",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "down",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "jump",
+        "width": 48,
+        "height": 48
+      }
+    ]
+  },
+  {
+    "name": "tiny-landscape",
+    "viewport": {
+      "width": 480,
+      "height": 240
+    },
+    "canvas": {
+      "x": 210.46875,
+      "y": 47.78125,
+      "width": 239.0625,
+      "height": 143.4375
+    },
+    "controls": [
+      {
+        "control": "left",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "right",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "down",
+        "width": 48,
+        "height": 48
+      },
+      {
+        "control": "jump",
+        "width": 48,
+        "height": 48
+      }
+    ]
+  }
+]

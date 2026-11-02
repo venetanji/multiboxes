@@ -59,7 +59,7 @@ Bounds remain 512 UTF-8 bytes per incoming message, 60 messages/s with burst 90,
 at most four inbound messages buffered by the CLI, and at most 160 sessions by
 default (configurable up to 200), including unjoined sessions. Browser input uses a
 20Hz heartbeat plus meaningful edges. Input expires after 0.5s and idle sessions
-after 30s; blur, hidden tabs, settings/text entry and disconnect release buttons.
+after 30s; resize/rotation, blur, hidden tabs, settings/text entry and disconnect release buttons.
 Invalid input closes with 1008; expired/slow sessions with 1001. A full world or
 disallowed browser origin rejects the handshake. No account cookies are involved.
 

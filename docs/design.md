@@ -30,8 +30,11 @@ requires an explicit Connect action. HTTPS hosting requires a valid WSS endpoint
 no mixed-content workarounds or arbitrary URL relay. Teacher reset/start requires
 a server-side bearer token and is absent from the student UI.
 
-Delivery is a draft PR only. No Alive, teaching or PFAD changes; no deployment,
-Pages enablement, PolyU infrastructure changes, merge, approval or release.
+The initial delivery was a draft PR. The later approved UI-polish scope includes
+review and merge of PR #3 after verification; see the
+[UI plan](superpowers/plans/2026-11-02-ui-polish.md). No Alive, teaching or PFAD
+changes, deployment, Pages enablement, PolyU infrastructure changes, formal approval
+review or release are included.
 
 Validation covers simulation/protocol lifecycle, keyboard/touch/blur/URL switching,
 native rendering, sandboxed desktop/mobile screenshots, and bounded active-client
