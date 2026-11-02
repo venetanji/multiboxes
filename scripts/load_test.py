@@ -78,6 +78,7 @@ class Bot:
 
                     async def send():
                         nonlocal seq
+                        next_send = time.perf_counter()
                         while True:
                             elapsed = time.perf_counter() - first_attempt
                             right = int(elapsed / 2.5 + self.index) % 2 == 0
@@ -96,7 +97,15 @@ class Bot:
                             self.inputs_sent += 1
                             self.input_bytes += len(raw_input)
                             seq += 1
-                            await asyncio.sleep(1 / self.input_hz)
+                            if self.input_hz == 20:
+                                # Match browser setInterval's deadline cadence, not work + sleep drift.
+                                next_send += 0.05
+                                now = time.perf_counter()
+                                if now - next_send > 0.1:
+                                    next_send = now
+                                await asyncio.sleep(max(0, next_send - now))
+                            else:
+                                await asyncio.sleep(0.1)  # Preserve the original 10Hz comparison workload.
 
                     async def receive():
                         nonlocal latest_tick, last_ack, previous_paint, origin, jump_ready

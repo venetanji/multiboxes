@@ -88,11 +88,13 @@ npm ci --prefix tests/browser
 # Linux + Docker + a Python 3.12 environment; non-root Chromium with sandbox checks:
 MULTIBOX_PYTHON=python scripts/browser_check.sh /tmp/multibox-browser
 # Active simulated players, not idle sockets (each starts its own local server):
-python scripts/load_test.py --clients 100 --seconds 120 --slow 5 --output /tmp/load-100.json
-python scripts/load_test.py --clients 150 --seconds 120 --slow 5 --output /tmp/load-150.json
+python scripts/load_test.py --clients 100 --seconds 120 --slow 5 --input-hz 20 --output /tmp/load-100.json
+python scripts/load_test.py --clients 150 --seconds 120 --slow 5 --input-hz 20 --output /tmp/load-150.json
 ```
 
-[Measured load results and limitations](docs/load-test.md) distinguish loopback
+**Measured payload egress fell from 116.4/244.4 to 28.4/59.6 Mbit/s** at 100/150 active
+players in the comparable runs. Additional 20 Hz-heartbeat runs were also checked.
+[Full measured results and limitations](docs/load-test.md) distinguish loopback
 capacity, browser checks and the still-required campus Wi-Fi/device rehearsal.
 Physics targets 60 Hz and full state snapshots 20 Hz; these are targets, not a
 promise for arbitrary hardware. Packed complete frames use 14 bytes/player and two-bit paint; reliable versioned

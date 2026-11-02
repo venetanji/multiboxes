@@ -1,107 +1,148 @@
-# Load results: preserved JSON baseline and packed protocol v2
+# Load results: complete binary snapshots versus JSON baseline
 
-**The table below is the preserved protocol-v1 JSON baseline at `cbb7a060`.**
-Protocol-v2 binary measurements are being added below after the comparable runs;
-the binary byte budget in the protocol reference is arithmetic, not measurement.
+Protocol v2 reduced measured server payload by **75.6% at 100 players**
+and **75.6% at 150**, using the comparable nominal-10 Hz input
+workload. Physics and snapshot targets stayed 60/ 20 Hz. Additional runs use the
+browser's 20 Hz heartbeat cadence. These are loopback measurements, not Wi-Fi or
+remote-route measurements, and do not establish the cause of transient remote lag.
 
-Measured 2026-11-02 in a separate Multiboxes checkout, using the original JSON authoritative
-server and `scripts/load_test.py`. No Alive app/fixtures or campus server was used.
-The browser suite was stopped during capacity measurement.
+## Before and after
 
-## Environment and workload
+| Nominal input workload | Players | JSON v1 payload | Packed v2 payload |                Reduction |
+| ---------------------- | ------: | --------------: | ----------------: | -----------------------: |
+| 10 Hz comparison        |     100 |  116.415 Mbit/s |     28.413 Mbit/s |                    75.6% |
+| 10 Hz comparison        |     150 |  244.393 Mbit/s |     59.596 Mbit/s |                    75.6% |
+| Browser-like 20 Hz      |     100 |    Not measured |     28.433 Mbit/s | No matched JSON baseline |
+| Browser-like 20 Hz      |     150 |    Not measured |     59.593 Mbit/s | No matched JSON baseline |
 
-Linux 6.18.57 x86-64 / glibc 2.41, Python 3.12.14, AMD EPYC 9V74, five visible
-logical CPUs, cgroup quota **4 CPU cores**, memory limit **16 GiB**. One server
-process and a separate load-generator process shared this machine. Pymunk 7.1.0,
-FastAPI 0.162.0, Starlette 1.10.0, Uvicorn 0.35.0, WebSockets 15.0.1. Loopback TCP,
-no TLS or WebSocket compression. CPU percentages below use psutil's convention:
-100% is one logical core, not the whole machine.
+The original [100-client JSON record](benchmarks/2026-11-02-100.json) and
+[150-client JSON record](benchmarks/2026-11-02-150.json) at `cbb7a060` are preserved.
+Their 120.14/120.20s runs had input-to-snapshot p95 57.4/69.5ms, median server CPU
+19%/29%, RSS peak 48.72/50.43MiB, no unexpected normal-client drops and queue maximum 1.
+The new protocol does **not** show an acknowledgement-latency improvement; packing
+primarily saves bandwidth. The Python load generator spends more CPU unpacking
+numeric records than its old C-backed JSON parser. Server CPU stayed similar at
+the comparison workload and rises modestly with the actual 20 Hz input workload.
 
-Each run has simultaneous joins, five seconds of warmup and **120 seconds of
-measurement**. All players actively move left/right, request fresh jumps on
-support, and use down-force, sending held input at 10 Hz. All clients moved;
-server jump/paint counters and changing snapshots confirm actual gameplay.
-Five clients read only one state every two seconds with small receive buffers;
-they continue sending input and reconnect after slow-consumer closure. Twice per
-run, 10% of normal clients deliberately reconnect. These are not idle-socket tests.
+## What bytes changed (arithmetic, not a benchmark)
 
-## Results
+In illustrative one-second simulation samples with `bot N` nicknames, player rows
+were 5597 of 7278 JSON bytes at 100 players and 8457 of 10138 at 150; paint was 1502 bytes
+including JSON quotes in each. Repeated identities/nicknames and textual numeric
+motion dominate. Packing only paint would leave most of the traffic unchanged.
 
-| Measurement | 100 clients (95 normal + 5 slow) | 150 clients (145 normal + 5 slow) |
-| --- | ---: | ---: |
-| Measured duration | 120.14 s | 120.20 s |
-| Physics step rate | 60.003 Hz | 60.006 Hz |
-| Normal client snapshot rate, median | 20.001 Hz | 19.999 Hz |
-| Input → acknowledged snapshot p50 / p95 / p99 | 30.3 / 57.4 / 61.7 ms | 32.0 / 69.5 / 74.8 ms |
-| Worst observed input → snapshot | 73.0 ms | 88.0 ms |
-| Tick scheduling lag p95 / p99 / max | 1.89 / 2.09 / 13.25 ms | 1.72 / 2.07 / 15.26 ms |
-| Physics work p95 / p99 | 1.89 / 2.37 ms | 3.16 / 4.27 ms |
-| Discarded catch-up time | 0 s | 0 s |
-| Maximum queued state per client | 1 | 1 |
-| Older queued full snapshots replaced | 380 | 342 |
-| Slow-consumer closures (expected) | 20 | 18 |
-| Unexpected normal-client disconnects | 0 | 0 |
-| Connections including deliberate/slow rejoins | 138 | 195 |
-| Server CPU median / p95 | 19.0% / 21.9% | 29.0% / 32.2% |
-| Generator CPU median / p95 | 23.0% / 27.0% | 48.0% / 51.9% |
-| Server RSS start / end / peak | 46.12 / 48.72 / 48.72 MiB | 48.00 / 50.43 / 50.43 MiB |
-| Server JSON payload egress | 116.4 Mbit/s | 244.4 Mbit/s |
-| Bodies/sessions after client teardown | 0 / 0 | 0 / 0 |
+V2 uses a 40-byte header, **14 bytes/player**, and a 375-byte default two-bit paint
+array. Names/constants are in reliable complete revisioned metadata, sent when
+needed. This gives **1815 bytes at 100** and **2515 bytes at 150** per complete
+gameplay frame. Steady full delivery at 20 Hz would arithmetically be 29.04/60.36 Mbit/s
+before metadata/framing. Actual delivery differs because five deliberately slow
+readers miss replaced states, players briefly reconnect and metadata is included.
+No compression or dependent gameplay deltas are involved. See
+[protocol offsets, limits and synchronization](protocol.md).
 
-The bounded harness checks passed at both sizes: movement, jumping, paint,
-connection stability, ≥59 physics Hz, median ≥19 state Hz, p95 acknowledgement
-<150ms, one queued snapshot, complete cleanup. Each run retained over 100,000
-normal-client latency samples. Full numeric records and one-second CPU/RSS samples:
-[100-client JSON](benchmarks/2026-11-02-100.json),
-[150-client JSON](benchmarks/2026-11-02-150.json).
+## Workload and environment
 
-Timing distributions in server metrics retain up to the last 7200 physics ticks;
-for these runs that is about the final 120 seconds. Input acknowledgement timing
-is measured by the generator's monotonic clock when a snapshot includes its
-sequence. It includes batching, parsing and local scheduling, **not** browser
-rendering's roughly 100ms interpolation buffer, campus Wi-Fi, TLS or human-device
-input delay. Bandwidth counts JSON payload successfully passed to transports;
-TCP/WebSocket/TLS/Wi-Fi overhead is additional. Slow readers consume less than the
-server attempts to send.
+Measured 2026-11-02 in the separate Multiboxes checkout. Linux 6.18.57 x86-64,
+glibc 2.41, Python 3.12.14, AMD EPYC 9V74; five visible logical CPUs, cgroup quota
+**4 cores**, memory limit **16 GiB**. The single authoritative server and separate
+load-generator process share this machine. CPU 100% means one logical core.
+Browser tests and Docker builds were stopped during the capacity measurements.
 
-## Other verification
+Each run: simultaneous joins, five-second warmup, then 120 seconds of active
+left/right movement, fresh supporting jumps, downward force and automatic paint.
+Five readers accept one message every two seconds with a small receive buffer;
+normal players continue independently. Twice, 10% of normal players reconnect.
+All clients moved; paint/jump counters increased. All required checks passed.
+These are not idle-socket counts.
 
-Python simulation/protocol/HTTP/WebSocket/native tests cover balanced teams,
-non-overlapping spawns, force independent of packet rate, supporting jump recharge
-and no original-contact reuse/held repeats/side-wall flight, down-force,
-descending paint and deterministic scoring, expiry, duplicate joins, validation,
-complete reconnect/reset snapshots, bounded queues/slow sender and teacher auth.
-Native tests use real SDL dummy rendering and a real local WebSocket connection,
-including very short jump presses and focus-loss release.
+For comparability, nominal 10 Hz retains the original work-then-sleep pacing;
+observed rates are reported below. The 20 Hz condition uses absolute deadlines,
+matching browser heartbeat cadence rather than accumulating work+sleep drift.
+Initial under-paced 20 Hz trials were discarded from the comparison and rerun;
+final observed medians are essentially 20 Hz. Extra human key-edge bursts remain
+subject to the independently tested 60/s rate limit.
 
-Browser checks run Chromium 141 through pinned Playwright 1.56.1 in non-root Docker
-with namespace and seccomp sandbox layers verified at `chrome://sandbox`. They
-exercise keyboard/jump, blur/form focus, pointer capture, touch activation, server
-switching and late events, outgoing backpressure, unavailable endpoints, and
-100-square desktop/mobile views. The same files are packaged for Python and Pages.
-Screenshots are visual evidence, not capacity results.
+All v2 egress totals include binary frames **and JSON metadata/welcome** payloads,
+including churn. Baseline metrics counted state JSON only, making the comparison
+slightly conservative. TCP/WebSocket/TLS/Wi-Fi overhead is not counted. Consumed
+bytes can be lower than transport-sent payload for intentionally slow readers.
+Input-to-snapshot uses the generator's monotonic clock when its accepted sequence
+appears in a snapshot; it excludes the rendering interpolation buffer and device
+input/display delays. Tick metrics retain the latest 7200 samples (about 120 s).
 
-## Reproduce and interpret
+## V2 measured results
+
+| Measurement                              |             100 / 10 Hz |             150 / 10 Hz |             100 / 20 Hz |             150 / 20 Hz |
+| ---------------------------------------- | --------------------: | --------------------: | --------------------: | --------------------: |
+| Measured seconds                         |                120.16 |                120.28 |                120.16 |                120.29 |
+| Physics Hz                               |                60.002 |                60.008 |                60.002 |                60.003 |
+| Normal-client snapshot Hz, median        |                19.998 |                20.003 |                19.998 |                20.001 |
+| Observed input Hz, median                |                 9.870 |                 9.785 |                19.998 |                20.001 |
+| Input → snapshot p50 / p95 / p99 (ms)    |    31.0 / 61.0 / 65.9 |    34.5 / 75.9 / 81.6 |    42.3 / 48.8 / 50.6 |    28.7 / 43.0 / 47.4 |
+| Worst observed input → snapshot (ms)     |                  77.3 |                 110.6 |                  72.1 |                 107.6 |
+| Server payload Mbit/s                    |                28.413 |                59.596 |                28.433 |                59.593 |
+| Server CPU median / p95 (%)              |           19.0 / 21.0 |           29.0 / 32.0 |           21.0 / 24.0 |           33.0 / 39.0 |
+| Generator CPU median / p95 (%)           |           29.0 / 32.0 |           60.9 / 65.9 |           31.0 / 35.0 |           64.0 / 71.0 |
+| Server RSS start / end / peak (MiB)      | 45.57 / 48.22 / 48.22 | 47.95 / 50.66 / 50.66 | 46.23 / 48.98 / 48.98 | 48.43 / 51.75 / 51.75 |
+| Tick scheduling lag p95 / p99 / max (ms) |    1.94 / 2.46 / 5.41 |   1.78 / 2.23 / 27.31 |    1.76 / 2.67 / 8.73 |   1.20 / 2.12 / 35.64 |
+| Physics work p95 / p99 (ms)              |           1.91 / 2.50 |           3.17 / 4.32 |           1.87 / 2.54 |           3.60 / 4.26 |
+| Discarded catch-up time (s)              |                   0.0 |                   0.0 |                   0.0 |                   0.0 |
+| Maximum queued state                     |                     1 |                     1 |                     1 |                     1 |
+| Replaced old queued states               |                   380 |                   380 |                   380 |                   380 |
+| Slow-consumer closures                   |                    20 |                    20 |                    20 |                    20 |
+| Unexpected normal-client disconnects     |                     0 |                     0 |                     0 |                     0 |
+| Connections including rejoins            |                   138 |                   198 |                   138 |                   198 |
+| Bodies / sessions after teardown         |                 0 / 0 |                 0 / 0 |                 0 / 0 |                 0 / 0 |
+
+Complete numeric records, including per-second CPU/RSS samples and bounded queue
+counters: [100 clients / 10 Hz](benchmarks/2026-11-02-v2-100-10hz.json), [150 clients / 10 Hz](benchmarks/2026-11-02-v2-150-10hz.json), [100 clients / 20 Hz](benchmarks/2026-11-02-v2-100-20hz.json), [150 clients / 20 Hz](benchmarks/2026-11-02-v2-150-20hz.json).
+
+## Visual/input verification and limits
+
+87 Python tests and 8 Node tests cover simulation, protocol, native rendering,
+full-width bounds, uint64 revisions, shared Python/JS golden vectors, malformed
+frames, paint padding/max sizes, slot reuse, stale frames and reliable metadata
+when intermediate queued states are replaced. Native clients use real local
+WebSocket connections and SDL dummy rendering.
+
+13 sandboxed Chromium checks cover keyboard/touch, blur/text focus, settings and
+URL switching, reconnect/disconnect, outgoing backpressure, 100-square desktop/mobile
+views and viewport-only play at 1440×900, 390×844, 844×390 and 480×240 including resize.
+Actual screenshots were inspected; namespace and seccomp sandbox layers pass.
+These are visual/input checks, not 100 physical-device rendering benchmarks.
+
+The original overflowing page/key-focus problem was reproduced and fixed. A small
+exploratory local Canvas-pixel probe before the layout fix observed 124.5–159.9ms
+from stationary right-key input to first visible motion (8 samples); this is not
+an end-to-end remote measurement or a latency improvement claim. Delayed-condition
+trials were confounded by residual movement and are excluded. The optional pixel
+probe remains off in ordinary CI. Per the user's later clarification that local
+play was fine and remote performance had recovered, there is no further transient
+lag investigation or WebRTC rewrite. Authoritative interpolation remains roughly
+100ms; server acknowledgements alone do not measure input-to-visible-motion.
+
+**Still unverified:** actual campus Wi-Fi contention/isolation, PolyU endpoint and
+TLS/certificate/reverse-proxy setup, physical mobile devices, low-powered renderers
+and hosted Pages→campus WSS reachability. Neither the old transient remote delay nor
+its later recovery was traced to a transport or to bandwidth. Reduced traffic is
+useful headroom, not proof of a remote-lag fix or a class-size guarantee. Two-minute
+RSS traces are not a long soak or proof of no leak. One process/world remains
+required; do not add independent Uvicorn workers to scale.
+
+## Reproduce
 
 ```sh
 python -m pip install -c requirements.lock -e '.[test,native]'
-python scripts/load_test.py --clients 100 --seconds 120 --slow 5 --output /tmp/load-100.json
-python scripts/load_test.py --clients 150 --seconds 120 --slow 5 --output /tmp/load-150.json
+python scripts/load_test.py --clients 100 --seconds 120 --slow 5 --input-hz 10 --output /tmp/v2-100-10.json
+python scripts/load_test.py --clients 150 --seconds 120 --slow 5 --input-hz 10 --output /tmp/v2-150-10.json
+python scripts/load_test.py --clients 100 --seconds 120 --slow 5 --input-hz 20 --output /tmp/v2-100-20.json
+python scripts/load_test.py --clients 150 --seconds 120 --slow 5 --input-hz 20 --output /tmp/v2-150-20.json
+node --test tests/*.test.mjs
 npm ci --prefix tests/browser
 MULTIBOX_PYTHON=python scripts/browser_check.sh /tmp/multibox-browser
 ```
 
-The load harness starts only a new local server, uses an ephemeral teacher token
-for metrics, bounds itself to 150 clients and 300 seconds, and tears down that
-process. Do not point it at the live class. A longer soak can reveal issues a
-120-second run cannot; small bounded RSS growth here is not proof of no leak.
-
-**Unverified:** actual campus Wi-Fi contention/client isolation, PolyU endpoint
-routing/certificates, physical touch devices, low-powered student renderers,
-TLS/reverse-proxy overhead and internet-hosted Pages → campus WSS reachability.
-The measured JSON bandwidth is material: 150 clients need about 244 Mbit/s of
-server egress before framing/TLS, with much of the traffic traversing campus Wi-Fi.
-Use the 50–100-student target as a rehearsal starting point, not an attendance
-promise. If bandwidth is the bottleneck, try the already-supported 10Hz snapshots
-(`Config.snapshot_hz`) and remeasure; correctness remains protected by full states.
-Do not scale by starting independent worker worlds.
+The bounded load harness starts a new **local** server with an ephemeral metrics
+token, allows at most 150 clients / 300 seconds and tears down only its own process.
+It cannot be pointed at the live class. For classroom address/ping/HTTP/firewall
+checks and an optional local image build, see [classroom networking](classroom-networking.md).
