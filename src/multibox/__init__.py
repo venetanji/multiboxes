@@ -36,8 +36,5 @@ __version__ = "0.1.0"
 __author__ = "Giovanni Lion"
 __email__ = "giovanni.lion@gmail.com"
 
-# Export main classes for easier importing
-from .player import Player
-from .avahi_utils import get_ip, make_service_info
-
-__all__ = ["Player", "get_ip", "make_service_info"]
+# Keep headless imports independent of Pygame/OSC and their optional dependencies.
+__all__ = []
